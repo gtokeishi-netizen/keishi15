@@ -765,13 +765,13 @@ function gi_generate_contextual_ai_response($query, $grants, $filter = 'all') {
         }
     }
     
-    return gi_generate_fallback_response($query, $grants, $filter);
+    return gi_generate_search_fallback_response($query, $grants, $filter);
 }
 
 /**
- * フォールバック応答生成（改良版）
+ * 検索フォールバック応答生成（改良版）
  */
-function gi_generate_fallback_response($query, $grants, $filter = 'all') {
+function gi_generate_search_fallback_response($query, $grants, $filter = 'all') {
     $count = count($grants);
     
     if ($count === 0) {
