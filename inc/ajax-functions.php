@@ -1152,6 +1152,9 @@ function gi_ajax_get_municipalities_for_prefectures() {
                 ]
             ]);
             
+            // デバッグログ追加
+            error_log("Prefecture: {$pref_slug}, Found municipalities: " . (is_wp_error($existing_municipalities) ? 'WP_Error: ' . $existing_municipalities->get_error_message() : count($existing_municipalities)));
+            
             if (!empty($existing_municipalities) && !is_wp_error($existing_municipalities)) {
                 foreach ($existing_municipalities as $term) {
                     $pref_municipalities[] = [
@@ -1163,8 +1166,24 @@ function gi_ajax_get_municipalities_for_prefectures() {
                 }
             }
             
-            // 2. 既存データがない場合は、標準的な市町村リストから生成
+            // 2. 既存データがない場合は、都道府県レベル市町村タームを確認
             if (empty($pref_municipalities)) {
+                // 都道府県レベルのタームを探す
+                $prefecture_level_slug = $pref_slug . '-prefecture-level';
+                $prefecture_level_term = get_term_by('slug', $prefecture_level_slug, 'grant_municipality');
+                
+                if ($prefecture_level_term) {
+                    $pref_municipalities[] = [
+                        'id' => $prefecture_level_term->term_id,
+                        'name' => $pref_name,
+                        'slug' => $prefecture_level_term->slug,
+                        'count' => $prefecture_level_term->count
+                    ];
+                }
+            }
+            
+            // 3. それでもない場合は、標準的な市町村リストから生成
+            if (empty($pref_municipalities) && function_exists('gi_get_standard_municipalities_by_prefecture')) {
                 $municipalities_list = gi_get_standard_municipalities_by_prefecture($pref_slug);
                 
                 foreach ($municipalities_list as $muni_name) {
@@ -1209,6 +1228,17 @@ function gi_ajax_get_municipalities_for_prefectures() {
                         ];
                     }
                 }
+            }
+            
+            // 4. 最後のフォールバック: 空の場合は都道府県名のみを返す
+            if (empty($pref_municipalities)) {
+                $pref_municipalities[] = [
+                    'id' => $prefecture_term->term_id,
+                    'name' => $pref_name,
+                    'slug' => $pref_slug,
+                    'count' => 0
+                ];
+                error_log("Using fallback municipality data for prefecture: {$pref_slug}");
             }
             
             // Sort municipalities by name for consistent ordering
@@ -1292,8 +1322,20 @@ function gi_ajax_get_municipalities_for_prefecture() {
                 ];
             }
         } else {
-            // 既存データがない場合は標準データから生成
-            $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
+            // 1. 都道府県レベル市町村タームを確認
+            $prefecture_level_slug = $prefecture_slug . '-prefecture-level';
+            $prefecture_level_term = get_term_by('slug', $prefecture_level_slug, 'grant_municipality');
+            
+            if ($prefecture_level_term) {
+                $municipalities_data[] = [
+                    'id' => $prefecture_level_term->term_id,
+                    'name' => $prefecture_term->name,
+                    'slug' => $prefecture_level_term->slug,
+                    'count' => $prefecture_level_term->count
+                ];
+            } else if (function_exists('gi_get_standard_municipalities_by_prefecture')) {
+                // 2. 標準データから生成
+                $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
             
             foreach ($standard_municipalities as $muni_name) {
                 $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
@@ -1336,7 +1378,26 @@ function gi_ajax_get_municipalities_for_prefecture() {
                         'count' => $existing_term->count
                     ];
                 }
+            } else {
+                // 3. 最後のフォールバック: 都道府県名のみを返す
+                $municipalities_data[] = [
+                    'id' => $prefecture_term->term_id,
+                    'name' => $prefecture_term->name,
+                    'slug' => $prefecture_slug,
+                    'count' => 0
+                ];
+                error_log("Using final fallback for prefecture: {$prefecture_slug}");
             }
+        }
+        
+        // データが空の場合の最終フォールバック
+        if (empty($municipalities_data)) {
+            $municipalities_data[] = [
+                'id' => $prefecture_term->term_id,
+                'name' => $prefecture_term->name,
+                'slug' => $prefecture_slug,
+                'count' => 0
+            ];
         }
         
         // 名前順にソート
