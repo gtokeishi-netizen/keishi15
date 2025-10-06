@@ -2769,13 +2769,15 @@ if (!function_exists('gi_render_card_unified')) {
 }
 
 /**
- * 助成金読み込み処理（完全版・統一カード対応）
+ * 助成金読み込み処理（完全版・統一カード対応）- フィルタリング修正版
  */
 function gi_ajax_load_grants() {
-    // nonceチェック
-    if (!wp_verify_nonce($_POST['nonce'] ?? '', 'gi_ajax_nonce')) {
-        wp_send_json_error('セキュリティチェックに失敗しました');
-    }
+    try {
+        // nonceチェック
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'gi_ajax_nonce')) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
+            return;
+        }
 
     // ===== パラメータ取得と検証 =====
     $search = sanitize_text_field($_POST['search'] ?? '');
@@ -2884,7 +2886,11 @@ function gi_ajax_load_grants() {
     if (!empty($status)) {
         // UIステータスをDBの値にマッピング
         $db_status = array_map(function($s) {
-            return $s === 'active' ? 'open' : ($s === 'upcoming' ? 'upcoming' : $s);
+            // 複数の可能性に対応
+            if ($s === 'active' || $s === '募集中') return 'open';
+            if ($s === 'upcoming' || $s === '募集予定') return 'upcoming';
+            if ($s === 'closed' || $s === '終了') return 'closed';
+            return $s;
         }, $status);
         
         $meta_query[] = [
@@ -2940,6 +2946,170 @@ function gi_ajax_load_grants() {
         }
     }
     
+    // 難易度フィルター
+    if (!empty($difficulty)) {
+        $meta_query[] = [
+            'key' => 'application_difficulty', // ACFフィールド名に合わせる
+            'value' => $difficulty,
+            'compare' => 'IN'
+        ];
+    }
+    
+    // 成功率フィルター
+    if (!empty($success_rate)) {
+        foreach ($success_rate as $rate_range) {
+            switch($rate_range) {
+                case '0-20':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [0, 20],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '20-40':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [20, 40],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '40-60':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [40, 60],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '60-80':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [60, 80],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '80-100':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [80, 100],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+            }
+        }
+    }
+    
+    // 補助率フィルター
+    if (!empty($subsidy_rate)) {
+        $meta_query[] = [
+            'key' => 'subsidy_rate',
+            'value' => $subsidy_rate,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 実施機関フィルター
+    if (!empty($organization)) {
+        $meta_query[] = [
+            'key' => 'organization',
+            'value' => $organization,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 実施機関種別フィルター
+    if (!empty($organization_type)) {
+        $meta_query[] = [
+            'key' => 'organization_type',
+            'value' => $organization_type,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 対象事業フィルター
+    if (!empty($target_business)) {
+        $meta_query[] = [
+            'key' => 'grant_target',
+            'value' => $target_business,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 申請方法フィルター
+    if (!empty($application_method)) {
+        $meta_query[] = [
+            'key' => 'application_method',
+            'value' => $application_method,
+            'compare' => '='
+        ];
+    }
+    
+    // 締切期間フィルター
+    if (!empty($deadline_range)) {
+        $now = time();
+        switch($deadline_range) {
+            case 'within_1month':
+                $end_time = $now + (30 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'within_3months':
+                $end_time = $now + (90 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'within_6months':
+                $end_time = $now + (180 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'anytime':
+                $meta_query[] = [
+                    'key' => 'deadline',
+                    'value' => ['随時', '通年', '年中'],
+                    'compare' => 'IN'
+                ];
+                break;
+        }
+    }
+    
+    // カスタム金額範囲フィルター
+    if ($amount_min > 0 || $amount_max > 0) {
+        $amount_query = [
+            'key' => 'max_amount_numeric',
+            'type' => 'NUMERIC'
+        ];
+        
+        if ($amount_min > 0 && $amount_max > 0) {
+            $amount_query['value'] = [$amount_min * 10000, $amount_max * 10000]; // 万円を円に変換
+            $amount_query['compare'] = 'BETWEEN';
+        } elseif ($amount_min > 0) {
+            $amount_query['value'] = $amount_min * 10000;
+            $amount_query['compare'] = '>=';
+        } elseif ($amount_max > 0) {
+            $amount_query['value'] = $amount_max * 10000;
+            $amount_query['compare'] = '<=';
+        }
+        
+        $meta_query[] = $amount_query;
+    }
+    
     // 注目の助成金フィルター
     if ($only_featured === 'true' || $only_featured === '1') {
         $meta_query[] = [
@@ -2980,7 +3150,7 @@ function gi_ajax_load_grants() {
             break;
         case 'success_rate_desc':
             $args['orderby'] = 'meta_value_num';
-            $args['meta_key'] = 'grant_success_rate';
+            $args['meta_key'] = 'adoption_rate'; // ACFフィールド名に合わせる
             $args['order'] = 'DESC';
             break;
         case 'featured_first':
@@ -3043,11 +3213,37 @@ function gi_ajax_load_grants() {
         'view' => $view,
         'query_info' => [
             'search' => $search,
-            'filters_applied' => !empty($categories) || !empty($prefectures) || !empty($tags) || !empty($status) || !empty($amount) || !empty($only_featured),
+            'filters_applied' => !empty($categories) || !empty($prefectures) || !empty($tags) || !empty($status) || !empty($amount) || !empty($only_featured) || !empty($difficulty) || !empty($success_rate) || !empty($subsidy_rate) || !empty($organization) || !empty($deadline_range),
+            'applied_filters' => [
+                'categories' => $categories,
+                'prefectures' => $prefectures, 
+                'tags' => $tags,
+                'status' => $status,
+                'difficulty' => $difficulty,
+                'success_rate' => $success_rate,
+                'amount' => $amount,
+                'subsidy_rate' => $subsidy_rate,
+                'organization' => $organization,
+                'deadline_range' => $deadline_range,
+                'only_featured' => $only_featured
+            ],
             'sort' => $sort,
         ],
-        'debug' => defined('WP_DEBUG') && WP_DEBUG ? $args : null,
+        'debug' => defined('WP_DEBUG') && WP_DEBUG ? [
+            'query_args' => $args,
+            'meta_query_count' => count($meta_query) - 1,
+            'tax_query_count' => count($tax_query) - 1
+        ] : null,
     ]);
+    
+    } catch (Exception $e) {
+        error_log('Grant Load Error: ' . $e->getMessage());
+        wp_send_json_error([
+            'message' => 'フィルタリング中にエラーが発生しました。しばらく後でお試しください。',
+            'code' => 'FILTERING_ERROR',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
+    }
 }
 
 /**
@@ -3238,8 +3434,7 @@ function gi_load_grants() {
         ],
     ]);
 }
-add_action('wp_ajax_gi_load_grants', 'gi_load_grants');
-add_action('wp_ajax_nopriv_gi_load_grants', 'gi_load_grants');
+// gi_load_grants AJAX handlers removed to avoid conflicts with gi_ajax_load_grants
 
 /**
  * =============================================================================
@@ -3247,27 +3442,7 @@ add_action('wp_ajax_nopriv_gi_load_grants', 'gi_load_grants');
  * =============================================================================
  */
 
-/**
- * Safe field getter with fallback
- */
-function gi_get_field_safe($field_name, $post_id, $default = '') {
-    // Try ACF field first
-    if (function_exists('get_field')) {
-        $value = get_field($field_name, $post_id);
-        if ($value !== false && $value !== null) {
-            return $value;
-        }
-    }
-    
-    // Try post meta
-    $meta_value = get_post_meta($post_id, $field_name, true);
-    if (!empty($meta_value)) {
-        return $meta_value;
-    }
-    
-    // Return default
-    return $default;
-}
+// gi_get_field_safe() function already declared earlier in this file
 
 /**
  * =============================================================================
