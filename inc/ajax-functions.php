@@ -256,7 +256,6 @@ function handle_grant_ai_question() {
         
         $post_id = intval($_POST['post_id'] ?? 0);
         $question = sanitize_textarea_field($_POST['question'] ?? '');
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         
         if (!$post_id || empty($question)) {
             wp_send_json_error(['message' => 'パラメータが不正です', 'code' => 'INVALID_PARAMS']);
@@ -270,43 +269,27 @@ function handle_grant_ai_question() {
             return;
         }
         
-        if (empty($session_id)) {
-            $session_id = wp_generate_uuid4();
-        }
-        
         $start_time = microtime(true);
         
-        // 助成金の詳細情報を取得
-        $grant_details = gi_get_grant_details($post_id);
+        // 助成金の基本情報を取得
+        $grant_info = gi_get_grant_basic_info($post_id);
         
-        // 質問の意図分析
-        $question_intent = gi_analyze_grant_question_intent($question, $grant_details);
+        // 実際のAI APIを呼び出して回答を生成
+        $ai_response = gi_call_real_ai_api($question, $grant_info);
         
-        // 助成金に関する簡単な応答
-        $ai_response = gi_generate_simple_grant_response($question, $grant_details, $question_intent);
-        
-        // フォローアップ質問を生成
-        $suggestions = gi_generate_smart_grant_suggestions($post_id, $question, $question_intent);
-        
-        // 関連するリソース・リンクを提供
-        $resources = gi_get_grant_resources($post_id, $question_intent);
-        
-        // 質問履歴保存
-        gi_save_grant_question_history($post_id, $question, $ai_response, $session_id);
+        if (!$ai_response) {
+            wp_send_json_error(['message' => 'AI APIの呼び出しに失敗しました', 'code' => 'AI_API_ERROR']);
+            return;
+        }
         
         $end_time = microtime(true);
         $processing_time = round(($end_time - $start_time) * 1000);
         
         wp_send_json_success([
             'response' => $ai_response,
-            'suggestions' => $suggestions,
-            'resources' => $resources,
             'grant_id' => $post_id,
             'grant_title' => $grant_post->post_title,
-            'intent' => $question_intent,
-            'session_id' => $session_id,
-            'processing_time_ms' => $processing_time,
-            'confidence_score' => gi_calculate_response_confidence($question, $ai_response)
+            'processing_time_ms' => $processing_time
         ]);
         
     } catch (Exception $e) {
@@ -318,6 +301,70 @@ function handle_grant_ai_question() {
         ]);
     }
 }
+
+/**
+ * 助成金の基本情報を取得
+ */
+function gi_get_grant_basic_info($post_id) {
+    $post = get_post($post_id);
+    
+    // 基本情報
+    $grant_info = [
+        'title' => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'excerpt' => $post->post_excerpt
+    ];
+    
+    // カスタムフィールド情報
+    $fields = [
+        'max_amount' => '最大助成額',
+        'deadline' => '申請期限', 
+        'grant_target' => '対象者',
+        'grant_condition' => '申請条件',
+        'application_method' => '申請方法',
+        'organization' => '実施機関',
+        'contact_info' => '連絡先',
+        'required_documents' => '必要書類',
+        'selection_criteria' => '選考基準',
+        'subsidy_rate' => '補助率',
+        'grant_purpose' => '助成目的'
+    ];
+    
+    foreach ($fields as $field => $label) {
+        $value = get_field($field, $post_id);
+        if (!empty($value)) {
+            $grant_info[$label] = is_array($value) ? implode('、', $value) : $value;
+        }
+    }
+    
+    // タクソノミー情報
+    $prefectures = wp_get_post_terms($post_id, 'grant_prefecture', ['fields' => 'names']);
+    if (!empty($prefectures)) {
+        $grant_info['対象地域'] = implode('、', $prefectures);
+    }
+    
+    $categories = wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names']);
+    if (!empty($categories)) {
+        $grant_info['カテゴリ'] = implode('、', $categories);
+    }
+    
+    return $grant_info;
+}
+
+/**
+ * 実際のAI APIを呼び出して回答を生成
+ */
+function gi_call_real_ai_api($question, $grant_info) {
+    // まず、環境設定でAI APIキーが設定されているかチェック
+    $api_key = get_option('gi_openai_api_key', '');
+    
+    if (empty($api_key)) {
+        // API キーが設定されていない場合のフォールバック
+        return gi_generate_fallback_response($question, $grant_info);
+    }
+    
+    // 助成金情報を整理してプロンプト作成
+    $grant_context = \"助成金情報:\\n\";\n    foreach ($grant_info as $key => $value) {\n        if (!empty($value)) {\n            $grant_context .= \"- {$key}: {$value}\\n\";\n        }\n    }\n    \n    $system_prompt = \"あなたは助成金に詳しい専門アドバイザーです。提供された助成金情報を基に、ユーザーの質問に正確で分かりやすく回答してください。\\n\\n{$grant_context}\";\n    \n    // OpenAI API呼び出し\n    $api_response = gi_call_openai_api($system_prompt, $question, $api_key);\n    \n    if ($api_response) {\n        return $api_response;\n    }\n    \n    // API呼び出し失敗時のフォールバック\n    return gi_generate_fallback_response($question, $grant_info);\n}\n\n/**\n * OpenAI API呼び出し\n */\nfunction gi_call_openai_api($system_prompt, $user_question, $api_key) {\n    $api_url = 'https://api.openai.com/v1/chat/completions';\n    \n    $data = [\n        'model' => 'gpt-3.5-turbo',\n        'messages' => [\n            ['role' => 'system', 'content' => $system_prompt],\n            ['role' => 'user', 'content' => $user_question]\n        ],\n        'max_tokens' => 500,\n        'temperature' => 0.7\n    ];\n    \n    $headers = [\n        'Authorization: Bearer ' . $api_key,\n        'Content-Type: application/json'\n    ];\n    \n    $ch = curl_init();\n    curl_setopt($ch, CURLOPT_URL, $api_url);\n    curl_setopt($ch, CURLOPT_POST, true);\n    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));\n    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);\n    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n    curl_setopt($ch, CURLOPT_TIMEOUT, 30);\n    \n    $response = curl_exec($ch);\n    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);\n    curl_close($ch);\n    \n    if ($http_code === 200 && $response) {\n        $decoded = json_decode($response, true);\n        if (isset($decoded['choices'][0]['message']['content'])) {\n            return trim($decoded['choices'][0]['message']['content']);\n        }\n    }\n    \n    return false;\n}\n\n/**\n * API呼び出し失敗時のフォールバック応答\n */\nfunction gi_generate_fallback_response($question, $grant_info) {\n    $response = \"この助成金について、以下の情報をお答えできます:\\n\\n\";\n    \n    // 基本的な情報を整理して返す\n    if (isset($grant_info['最大助成額'])) {\n        $response .= \"💰 最大助成額: {$grant_info['最大助成額']}\\n\";\n    }\n    if (isset($grant_info['申請期限'])) {\n        $response .= \"📅 申請期限: {$grant_info['申請期限']}\\n\";\n    }\n    if (isset($grant_info['対象者'])) {\n        $response .= \"👥 対象者: {$grant_info['対象者']}\\n\";\n    }\n    if (isset($grant_info['実施機関'])) {\n        $response .= \"🏢 実施機関: {$grant_info['実施機関']}\\n\";\n    }\n    \n    $response .= \"\\n詳しい内容については、実施機関にお問い合わせください。\";\n    \n    return $response;\n}"
 
 /**
  * Enhanced 音声入力処理
@@ -3678,1316 +3725,165 @@ function gi_load_grants() {
 
 /**
  * =============================================================================
- * 【高度AI機能】 - 機械学習風アルゴリズムとインテリジェント分析
+ * OpenAI API 設定管理
  * =============================================================================
  */
 
 /**
- * 助成金特性の包括的AI分析
+ * OpenAI API設定の管理画面をWordPress管理画面に追加
  */
-function gi_analyze_grant_characteristics($grant_details) {
-    $characteristics = [
-        'industry_type' => 'general',
-        'complexity_level' => 5, // 1-10スケール
-        'technical_requirements' => [],
-        'target_business_size' => 'medium',
-        'innovation_focus' => false,
-        'sustainability_focus' => false,
-        'digital_transformation' => false,
-        'geographic_scope' => 'national',
-        'funding_competitiveness' => 'medium'
-    ];
-    
-    $title = strtolower($grant_details['title'] ?? '');
-    $target = strtolower($grant_details['grant_target'] ?? '');
-    $content = strtolower($grant_details['content'] ?? '');
-    $combined_text = $title . ' ' . $target . ' ' . $content;
-    
-    // 業種分類（機械学習風マッチング）
-    $industry_keywords = [
-        'it_digital' => ['IT', 'デジタル', 'DX', 'AI', 'IoT', 'システム', 'ソフトウェア', 'アプリ', 'クラウド'],
-        'manufacturing' => ['製造', 'ものづくり', '工場', '設備', '機械', '生産', '品質', '技術開発'],
-        'startup' => ['創業', 'スタートアップ', 'ベンチャー', '起業', '新規事業', '事業化'],
-        'sustainability' => ['環境', '省エネ', '再生可能', 'カーボン', 'SDGs', '持続可能', 'グリーン'],
-        'healthcare' => ['医療', 'ヘルスケア', '健康', '福祉', '介護', '医薬', '治療'],
-        'agriculture' => ['農業', '農林', '漁業', '食品', '6次産業', '農産物'],
-        'tourism' => ['観光', 'インバウンド', '地域振興', '文化', '伝統工芸']
-    ];
-    
-    $max_score = 0;
-    $detected_industry = 'general';
-    
-    foreach ($industry_keywords as $industry => $keywords) {
-        $score = 0;
-        foreach ($keywords as $keyword) {
-            $score += substr_count($combined_text, strtolower($keyword));
-        }
-        if ($score > $max_score) {
-            $max_score = $score;
-            $detected_industry = $industry;
-        }
-    }
-    
-    $characteristics['industry_type'] = $detected_industry;
-    
-    // 複雑度レベルの算出（多要素分析）
-    $complexity_factors = 0;
-    
-    // 金額による複雑度
-    $amount = floatval($grant_details['max_amount_numeric'] ?? 0);
-    if ($amount >= 50000000) $complexity_factors += 3; // 5000万円以上
-    elseif ($amount >= 10000000) $complexity_factors += 2; // 1000万円以上
-    elseif ($amount >= 1000000) $complexity_factors += 1; // 100万円以上
-    
-    // 書類の複雑さ
-    $required_docs = $grant_details['required_documents'] ?? '';
-    if (strpos($required_docs, '事業計画書') !== false) $complexity_factors++;
-    if (strpos($required_docs, '技術資料') !== false) $complexity_factors++;
-    if (strpos($required_docs, '財務書類') !== false) $complexity_factors++;
-    
-    // 審査難易度
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
-    if ($difficulty === 'hard') $complexity_factors += 2;
-    elseif ($difficulty === 'normal') $complexity_factors += 1;
-    
-    $characteristics['complexity_level'] = min(10, max(1, $complexity_factors));
-    
-    // 技術要件の抽出
-    $tech_requirements = [];
-    if (strpos($combined_text, 'AI') !== false || strpos($combined_text, '人工知能') !== false) {
-        $tech_requirements[] = 'ai_ml';
-    }
-    if (strpos($combined_text, 'IoT') !== false) {
-        $tech_requirements[] = 'iot';
-    }
-    if (strpos($combined_text, 'クラウド') !== false) {
-        $tech_requirements[] = 'cloud';
-    }
-    $characteristics['technical_requirements'] = $tech_requirements;
-    
-    // 事業規模の推定
-    if ($amount >= 30000000) {
-        $characteristics['target_business_size'] = 'large';
-    } elseif ($amount <= 3000000) {
-        $characteristics['target_business_size'] = 'small';
-    }
-    
-    // フォーカス領域の判定
-    $characteristics['innovation_focus'] = strpos($combined_text, '革新') !== false || strpos($combined_text, 'イノベーション') !== false;
-    $characteristics['sustainability_focus'] = strpos($combined_text, '環境') !== false || strpos($combined_text, '持続可能') !== false;
-    $characteristics['digital_transformation'] = strpos($combined_text, 'DX') !== false || strpos($combined_text, 'デジタル変革') !== false;
-    
-    return $characteristics;
+add_action('admin_menu', 'gi_add_openai_settings_page');
+function gi_add_openai_settings_page() {
+    add_options_page(
+        'AI質問機能設定',
+        'AI質問機能',
+        'manage_options',
+        'gi-openai-settings',
+        'gi_openai_settings_page'
+    );
 }
 
 /**
- * 包括的AIスコア計算（機械学習風重み付けアルゴリズム）
+ * OpenAI API設定画面の表示
  */
-function gi_calculate_comprehensive_ai_score($grant_details) {
-    $base_score = 50; // ベーススコア
-    
-    // === 1. 金額・規模要因 (重み: 25%) ===
-    $amount_score = 0;
-    $amount = floatval($grant_details['max_amount_numeric'] ?? 0);
-    
-    if ($amount >= 50000000) $amount_score = 25;      // 5000万円以上
-    elseif ($amount >= 10000000) $amount_score = 20;  // 1000万円以上
-    elseif ($amount >= 5000000) $amount_score = 15;   // 500万円以上
-    elseif ($amount >= 1000000) $amount_score = 10;   // 100万円以上
-    else $amount_score = 5;
-    
-    // === 2. 成功確率要因 (重み: 30%) ===
-    $success_score = 0;
-    $success_rate = floatval($grant_details['adoption_rate'] ?? 0);
-    
-    if ($success_rate >= 70) $success_score = 30;
-    elseif ($success_rate >= 50) $success_score = 25;
-    elseif ($success_rate >= 30) $success_score = 20;
-    elseif ($success_rate >= 20) $success_score = 15;
-    else $success_score = 10;
-    
-    // === 3. 申請難易度要因 (重み: 20%) ===
-    $difficulty_score = 0;
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
-    
-    switch ($difficulty) {
-        case 'easy': $difficulty_score = 20; break;
-        case 'normal': $difficulty_score = 15; break;
-        case 'hard': $difficulty_score = 10; break;
-        default: $difficulty_score = 12;
-    }
-    
-    // === 4. 時間的要因 (重み: 15%) ===
-    $timing_score = gi_calculate_timing_score($grant_details);
-    
-    // === 5. 戦略的適合性 (重み: 10%) ===
-    $strategic_score = gi_calculate_strategic_fit_score($grant_details);
-    
-    $total_score = $base_score + $amount_score + $success_score + $difficulty_score + $timing_score + $strategic_score;
-    
-    return [
-        'total_score' => min(100, max(0, $total_score)),
-        'breakdown' => [
-            'amount_factor' => $amount_score,
-            'success_factor' => $success_score,
-            'difficulty_factor' => $difficulty_score,
-            'timing_factor' => $timing_score,
-            'strategic_factor' => $strategic_score
-        ],
-        'confidence' => gi_calculate_score_confidence($grant_details),
-        'risk_factors' => gi_identify_risk_factors($grant_details)
-    ];
-}
-
-/**
- * 成功確率の推定（多変量解析風アプローチ）
- */
-function gi_estimate_success_probability($grant_details) {
-    // ベース確率（業界平均）
-    $base_probability = 0.35; // 35%
-    
-    $probability_factors = [];
-    
-    // === 1. 金額規模による調整 ===
-    $amount = floatval($grant_details['max_amount_numeric'] ?? 0);
-    if ($amount <= 3000000) {
-        $probability_factors['amount_size'] = 0.15; // 小規模は競争が激しい
-    } elseif ($amount >= 30000000) {
-        $probability_factors['amount_size'] = -0.1; // 大規模は要件が厳しい
-    } else {
-        $probability_factors['amount_size'] = 0.05; // 中規模が最適
-    }
-    
-    // === 2. 業種・分野による調整 ===
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    $industry_multipliers = [
-        'it_digital' => 0.1,        // IT系は政策的優遇
-        'sustainability' => 0.08,   // 環境系も優遇
-        'manufacturing' => 0.05,    // 製造業は標準的
-        'startup' => -0.05,         // スタートアップは競争激化
-        'general' => 0.0
-    ];
-    
-    $probability_factors['industry'] = $industry_multipliers[$characteristics['industry_type']] ?? 0;
-    
-    // === 3. 申請難易度による調整 ===
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
-    $difficulty_adjustments = [
-        'easy' => -0.05,   // 簡単 = 競争が激しい
-        'normal' => 0.02,  // 普通 = バランス良い
-        'hard' => 0.08     // 難しい = 競合が少ない
-    ];
-    
-    $probability_factors['difficulty'] = $difficulty_adjustments[$difficulty] ?? 0;
-    
-    // === 4. 締切プレッシャーによる調整 ===
-    $deadline_pressure = gi_analyze_deadline_pressure($grant_details['deadline'] ?? '');
-    $probability_factors['deadline'] = $deadline_pressure['is_urgent'] ? -0.08 : 0.03;
-    
-    // === 5. 組織の信頼性による調整 ===
-    $organization = strtolower($grant_details['organization'] ?? '');
-    if (strpos($organization, '経済産業省') !== false || strpos($organization, '国') !== false) {
-        $probability_factors['organization'] = 0.05; // 国の機関は信頼性高い
-    } elseif (strpos($organization, '県') !== false || strpos($organization, '市') !== false) {
-        $probability_factors['organization'] = 0.03; // 地方自治体
-    } else {
-        $probability_factors['organization'] = 0.0;
-    }
-    
-    // === 6. 特色・差別化要因 ===
-    if ($grant_details['is_featured'] ?? false) {
-        $probability_factors['featured'] = 0.06;
-    }
-    
-    // 総合確率の計算
-    $total_adjustment = array_sum($probability_factors);
-    $final_probability = $base_probability + $total_adjustment;
-    $final_probability = min(0.95, max(0.05, $final_probability)); // 5%-95%の範囲に制限
-    
-    // 信頼度の計算
-    $confidence = gi_calculate_probability_confidence($grant_details, $probability_factors);
-    
-    return [
-        'overall_score' => $final_probability,
-        'percentage' => round($final_probability * 100, 1),
-        'confidence' => $confidence,
-        'contributing_factors' => $probability_factors,
-        'risk_level' => gi_assess_risk_level($final_probability),
-        'improvement_suggestions' => gi_generate_probability_improvement_suggestions($probability_factors, $grant_details)
-    ];
-}
-
-/**
- * 業種別特化チェックリスト生成
- */
-function gi_generate_it_specific_checklist($grant_details) {
-    return [
-        [
-            'text' => 'ITシステム・ソフトウェアの技術仕様書、アーキテクチャ設計書の作成完了',
-            'priority' => 'high',
-            'checked' => false,
-            'category' => 'technical',
-            'ai_confidence' => 0.88,
-            'completion_time' => '2-3日',
-            'tips' => ['セキュリティ要件を明記', 'スケーラビリティを考慮', '既存システムとの連携方法を詳述']
-        ],
-        [
-            'text' => 'DX効果の定量化：業務効率化率、コスト削減額、売上向上見込みの数値化',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'impact',
-            'ai_confidence' => 0.91,
-            'completion_time' => '4-6時間',
-            'tips' => ['現状の業務時間を測定', '導入後のシミュレーション実行', 'ROI計算を3パターン作成']
-        ],
-        [
-            'text' => 'データセキュリティ・個人情報保護対策の具体的実装計画策定',
-            'priority' => 'high',
-            'checked' => false,
-            'category' => 'compliance',
-            'ai_confidence' => 0.85,
-            'completion_time' => '1-2日',
-            'tips' => ['GDPR、個人情報保護法への準拠確認', 'セキュリティ監査計画の策定']
-        ]
-    ];
-}
-
-function gi_generate_manufacturing_checklist($grant_details) {
-    return [
-        [
-            'text' => '生産設備・製造機械の仕様書、能力向上計画、品質管理体制の文書化',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'technical',
-            'ai_confidence' => 0.89,
-            'completion_time' => '2-4日',
-            'tips' => ['生産能力の定量的向上目標設定', '品質指標（不良率等）の改善計画', '安全基準の遵守計画']
-        ],
-        [
-            'text' => '製造プロセス改善による原価低減効果、生産性向上率の算出と検証',
-            'priority' => 'high',
-            'checked' => false,
-            'category' => 'economics',
-            'ai_confidence' => 0.86,
-            'completion_time' => '1-2日',
-            'tips' => ['現行コスト構造の詳細分析', '改善後の原価計算', '競合他社との比較分析']
-        ],
-        [
-            'text' => '環境負荷削減、省エネルギー効果の定量的評価と認証取得計画',
-            'priority' => 'medium',
-            'checked' => false,
-            'category' => 'sustainability',
-            'ai_confidence' => 0.78,
-            'completion_time' => '1日',
-            'tips' => ['CO2削減効果の算出', 'ISO14001等の認証計画', 'エネルギー使用量の削減目標']
-        ]
-    ];
-}
-
-function gi_generate_startup_checklist($grant_details) {
-    return [
-        [
-            'text' => '事業モデルの独自性・革新性の明確化と市場優位性の定量的証明',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'strategy',
-            'ai_confidence' => 0.92,
-            'completion_time' => '3-5日',
-            'tips' => ['競合分析マトリックスの作成', '市場規模と成長率の調査', '顧客獲得コストの算出']
-        ],
-        [
-            'text' => '5年間の財務計画：売上予測、損益分岐点、資金調達計画の策定',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'finance',
-            'ai_confidence' => 0.88,
-            'completion_time' => '2-3日',
-            'tips' => ['保守的・楽観的・悲観的の3シナリオ作成', 'キャッシュフロー予測', '追加投資計画']
-        ],
-        [
-            'text' => '創業チームの経歴・専門性と事業への適合性の説明資料作成',
-            'priority' => 'high',
-            'checked' => false,
-            'category' => 'team',
-            'ai_confidence' => 0.81,
-            'completion_time' => '1日',
-            'tips' => ['各メンバーの具体的貢献内容', '業界経験年数と実績', '外部アドバイザーの活用']
-        ]
-    ];
-}
-
-function gi_generate_sustainability_checklist($grant_details) {
-    return [
-        [
-            'text' => 'SDGs目標との整合性とインパクト測定指標（KPI）の設定',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'impact',
-            'ai_confidence' => 0.87,
-            'completion_time' => '2-3日',
-            'tips' => ['関連するSDGs番号の明記', '定量的インパクト指標の設定', '第三者認証機関の活用検討']
-        ],
-        [
-            'text' => '環境負荷削減効果の科学的根拠と第三者検証機関による評価取得',
-            'priority' => 'high',
-            'checked' => false,
-            'category' => 'verification',
-            'ai_confidence' => 0.84,
-            'completion_time' => '1-2週間',
-            'tips' => ['ライフサイクルアセスメント（LCA）実施', '環境影響評価の専門機関への依頼']
-        ]
-    ];
-}
-
-/**
- * 高度な助成金分析とAIスコアリング
- */
-function gi_perform_advanced_grant_analysis($grant) {
-    return [
-        'success_probability' => gi_calculate_detailed_success_probability($grant),
-        'roi_analysis' => gi_calculate_roi_analysis($grant),
-        'competition_analysis' => gi_analyze_competitive_landscape($grant),
-        'effort_value_ratio' => gi_calculate_effort_value_ratio($grant),
-        'industry_compatibility' => gi_assess_industry_compatibility($grant),
-        'timeline_feasibility' => gi_assess_timeline_feasibility($grant),
-        'resource_requirements' => gi_estimate_resource_requirements($grant)
-    ];
-}
-
-function gi_calculate_detailed_success_probability($grant) {
-    $base_rate = 0.35; // 業界平均35%
-    
-    // 金額ファクター
-    $amount_factor = 0;
-    if ($grant['amount_numeric'] <= 5000000) {
-        $amount_factor = 0.1; // 500万円以下は競争激化
-    } elseif ($grant['amount_numeric'] >= 50000000) {
-        $amount_factor = -0.15; // 5000万円以上は要件厳格
-    }
-    
-    // 難易度ファクター
-    $difficulty_factor = 0;
-    if (isset($grant['difficulty']['level'])) {
-        switch ($grant['difficulty']['level']) {
-            case 'easy': $difficulty_factor = -0.05; break; // 簡単=競争激化
-            case 'normal': $difficulty_factor = 0.02; break;
-            case 'hard': $difficulty_factor = 0.08; break; // 困難=競合少
-        }
-    }
-    
-    // 成功率ファクター
-    $success_rate_factor = 0;
-    if (!empty($grant['success_rate']) && $grant['success_rate'] > 0) {
-        $success_rate_factor = ($grant['success_rate'] - 35) / 100; // 基準からの差分
-    }
-    
-    $final_probability = $base_rate + $amount_factor + $difficulty_factor + $success_rate_factor;
-    return max(0.05, min(0.95, $final_probability)); // 5%-95%に制限
-}
-
-function gi_calculate_roi_analysis($grant) {
-    $investment = $grant['amount_numeric'] ?: 0;
-    $subsidy_amount = $investment; // 助成金額
-    
-    // 業界別標準ROI
-    $industry_base_roi = [
-        'it_digital' => 180,
-        'manufacturing' => 150,
-        'startup' => 220,
-        'sustainability' => 140,
-        'general' => 160
-    ];
-    
-    // 推定ROI計算
-    $estimated_roi = $industry_base_roi['general']; // デフォルト
-    
-    // リスク調整
-    $risk_adjustment = 1.0;
-    if (isset($grant['difficulty']['level']) && $grant['difficulty']['level'] === 'hard') {
-        $risk_adjustment = 0.8; // リスクが高い場合は20%減
-    }
-    
-    $projected_roi = $estimated_roi * $risk_adjustment;
-    $payback_months = round(($investment / ($investment * $projected_roi / 100)) * 12);
-    
-    return [
-        'projected_roi' => $projected_roi,
-        'payback_months' => min(60, max(6, $payback_months)),
-        'risk_adjusted' => $risk_adjustment < 1.0,
-        'confidence' => 0.7
-    ];
-}
-
-function gi_analyze_competitive_landscape($grant) {
-    // 競合分析（簡略化アルゴリズム）
-    $base_advantage = 0.5;
-    
-    $advantages = [];
-    
-    // 金額の魅力度
-    if ($grant['amount_numeric'] >= 10000000) {
-        $advantages[] = '高額助成';
-        $base_advantage += 0.1;
-    }
-    
-    // 成功率の高さ
-    if (!empty($grant['success_rate']) && $grant['success_rate'] >= 40) {
-        $advantages[] = '高採択率';
-        $base_advantage += 0.15;
-    }
-    
-    // 申請の容易さ
-    if (isset($grant['difficulty']['level']) && $grant['difficulty']['level'] === 'easy') {
-        $advantages[] = '申請容易';
-        $base_advantage += 0.1;
-    }
-    
-    return [
-        'advantage_score' => min(1.0, $base_advantage),
-        'key_advantages' => $advantages,
-        'competitive_intensity' => $base_advantage < 0.6 ? 'high' : 'medium'
-    ];
-}
-
-function gi_calculate_effort_value_ratio($grant) {
-    // 労力対効果比の算出
-    $value_score = ($grant['amount_numeric'] ?: 0) / 1000000; // 100万円単位
-    
-    $effort_score = 5; // ベース労力スコア
-    if (isset($grant['difficulty']['level'])) {
-        switch ($grant['difficulty']['level']) {
-            case 'easy': $effort_score = 3; break;
-            case 'normal': $effort_score = 5; break;
-            case 'hard': $effort_score = 8; break;
-        }
-    }
-    
-    return $effort_score > 0 ? $value_score / $effort_score : 0;
-}
-
-function gi_assess_industry_compatibility($grant) {
-    // 業界適合性の評価（0-1スケール）
-    return 0.75; // デフォルト値（将来的にはより詳細な分析）
-}
-
-function gi_assess_timeline_feasibility($grant) {
-    // スケジュール実現可能性の評価
-    return [
-        'feasibility_score' => 0.8,
-        'critical_milestones' => ['書類準備', '審査期間', '事業実行'],
-        'risk_factors' => ['締切プレッシャー']
-    ];
-}
-
-function gi_estimate_resource_requirements($grant) {
-    // 必要リソースの推定
-    return [
-        'estimated_hours' => 40, // 申請準備時間
-        'required_expertise' => ['事業計画', '財務計画'],
-        'external_support_needed' => false
-    ];
-}
-
-function gi_calculate_composite_ai_score($grant, $analysis) {
-    // 複合AIスコアの計算
-    $weights = [
-        'success_probability' => 0.3,
-        'roi_potential' => 0.25,
-        'competitive_advantage' => 0.2,
-        'effort_efficiency' => 0.15,
-        'industry_fit' => 0.1
-    ];
-    
-    $score = 0;
-    $score += $analysis['success_probability'] * 100 * $weights['success_probability'];
-    $score += min(100, $analysis['roi_analysis']['projected_roi']) * $weights['roi_potential'];
-    $score += $analysis['competition_analysis']['advantage_score'] * 100 * $weights['competitive_advantage'];
-    $score += min(100, $analysis['effort_value_ratio'] * 20) * $weights['effort_efficiency'];
-    $score += $analysis['industry_compatibility'] * 100 * $weights['industry_fit'];
-    
-    return round($score, 1);
-}
-
-function gi_analyze_grant_risks($grant) {
-    $risks = [];
-    
-    // 締切リスク
-    if (isset($grant['deadline']) && !empty($grant['deadline'])) {
-        $deadline_pressure = gi_analyze_deadline_pressure($grant['deadline']);
-        if ($deadline_pressure['is_urgent']) {
-            $risks[] = [
-                'type' => 'deadline',
-                'severity' => 'high',
-                'description' => '申請期限が迫っている',
-                'mitigation' => '即座に準備開始、外部サポート検討'
-            ];
-        }
-    }
-    
-    // 競争リスク
-    if ($grant['amount_numeric'] >= 10000000) {
-        $risks[] = [
-            'type' => 'competition',
-            'severity' => 'medium',
-            'description' => '高額助成金のため競争激化の可能性',
-            'mitigation' => '差別化ポイントの明確化と強化'
-        ];
-    }
-    
-    // 複雑性リスク
-    if (isset($grant['difficulty']['level']) && $grant['difficulty']['level'] === 'hard') {
-        $risks[] = [
-            'type' => 'complexity',
-            'severity' => 'medium',
-            'description' => '申請要件が複雑で準備に時間を要する',
-            'mitigation' => '専門家サポートの活用、十分な準備期間確保'
-        ];
-    }
-    
-    return $risks;
-}
-
-function gi_generate_optimization_suggestions($best_grant, $all_grants) {
-    $suggestions = [];
-    
-    // 成功率向上提案
-    if (isset($best_grant['success_rate']) && $best_grant['success_rate'] < 50) {
-        $suggestions[] = [
-            'type' => 'success_improvement',
-            'priority' => 'high',
-            'title' => '採択率向上のための差別化戦略',
-            'description' => '競合他社との差別化ポイントを3つ以上明確にし、独自性を強調する',
-            'action_items' => [
-                '過去3年の採択事例を分析し、成功パターンを把握',
-                '自社の技術的優位性を定量的に証明',
-                '市場での独自ポジションを明確化'
-            ]
-        ];
-    }
-    
-    // 準備時間最適化
-    $suggestions[] = [
-        'type' => 'preparation',
-        'priority' => 'medium',
-        'title' => '効率的な申請準備プロセス',
-        'description' => '必要書類の優先順位付けと並行作業による時間短縮',
-        'action_items' => [
-            '重要度・緊急度マトリックスで書類作成の優先順位決定',
-            '外部専門家への早期相談',
-            '社内リソースの適切な配分'
-        ]
-    ];
-    
-    return $suggestions;
-}
-
-function gi_identify_key_strength($grant) {
-    if (isset($grant['success_rate']) && $grant['success_rate'] >= 50) {
-        return '高採択率';
-    }
-    if ($grant['amount_numeric'] >= 10000000) {
-        return '高額助成';
-    }
-    if (isset($grant['difficulty']['level']) && $grant['difficulty']['level'] === 'easy') {
-        return '申請容易';
-    }
-    return '総合バランス';
-}
-
-function gi_calculate_recommendation_confidence($best_grant, $all_grants) {
-    // 推薦の信頼度計算
-    $confidence = 0.7; // ベース信頼度
-    
-    // スコア差による調整
-    if (count($all_grants) >= 2) {
-        $score_diff = $best_grant['composite_score'] - $all_grants[1]['composite_score'];
-        if ($score_diff >= 10) {
-            $confidence += 0.2; // 大きな差がある場合は信頼度向上
-        } elseif ($score_diff < 3) {
-            $confidence -= 0.15; // 僅差の場合は信頼度低下
-        }
-    }
-    
-    return min(0.95, max(0.5, $confidence));
-}
-
-function gi_check_urgency_factors($grant) {
-    // 緊急性要因のチェック
-    if (isset($grant['deadline']) && !empty($grant['deadline'])) {
-        $deadline_pressure = gi_analyze_deadline_pressure($grant['deadline']);
-        return $deadline_pressure['is_urgent'];
-    }
-    return false;
-}
-
-/**
- * サポート関数群
- */
-function gi_analyze_deadline_pressure($deadline) {
-    if (empty($deadline)) {
-        return ['is_urgent' => false, 'days_remaining' => null, 'recommended_prep_time' => '1-2ヶ月'];
-    }
-    
-    $deadline_timestamp = strtotime($deadline);
-    if (!$deadline_timestamp) {
-        return ['is_urgent' => false, 'days_remaining' => null, 'recommended_prep_time' => '1-2ヶ月'];
-    }
-    
-    $now = time();
-    $days_remaining = ceil(($deadline_timestamp - $now) / (24 * 60 * 60));
-    
-    $is_urgent = $days_remaining <= 30;
-    
-    $recommended_prep_time = '1-2ヶ月';
-    if ($days_remaining <= 14) {
-        $recommended_prep_time = '即座に開始';
-    } elseif ($days_remaining <= 30) {
-        $recommended_prep_time = '2週間以内に開始';
-    }
-    
-    return [
-        'is_urgent' => $is_urgent,
-        'days_remaining' => $days_remaining,
-        'recommended_prep_time' => $recommended_prep_time,
-        'strategy' => $is_urgent ? '緊急対応体制での集中準備' : '計画的な段階的準備'
-    ];
-}
-
-function gi_calculate_timing_score($grant_details) {
-    $score = 7; // ベーススコア
-    
-    $deadline_analysis = gi_analyze_deadline_pressure($grant_details['deadline'] ?? '');
-    if ($deadline_analysis['is_urgent']) {
-        $score -= 3; // 締切が迫っている場合は減点
-    } elseif ($deadline_analysis['days_remaining'] > 60) {
-        $score += 3; // 十分な準備時間がある場合は加点
-    }
-    
-    return $score;
-}
-
-function gi_calculate_strategic_fit_score($grant_details) {
-    $score = 5; // ベーススコア
-    
-    // 特色助成金の場合は加点
-    if ($grant_details['is_featured'] ?? false) {
-        $score += 3;
-    }
-    
-    // 高い成功率の場合は加点
-    $success_rate = floatval($grant_details['adoption_rate'] ?? 0);
-    if ($success_rate >= 60) {
-        $score += 2;
-    }
-    
-    return $score;
-}
-
-function gi_calculate_score_confidence($grant_details) {
-    // スコア算出の信頼度
-    $confidence = 0.75; // ベース信頼度
-    
-    // データの完全性による調整
-    $required_fields = ['max_amount', 'deadline', 'grant_target', 'organization'];
-    $available_fields = 0;
-    
-    foreach ($required_fields as $field) {
-        if (!empty($grant_details[$field])) {
-            $available_fields++;
-        }
-    }
-    
-    $data_completeness = $available_fields / count($required_fields);
-    $confidence *= $data_completeness;
-    
-    return round($confidence, 2);
-}
-
-function gi_identify_risk_factors($grant_details) {
-    $risks = [];
-    
-    // 高額助成金のリスク
-    if (($grant_details['max_amount_numeric'] ?? 0) >= 30000000) {
-        $risks[] = '高額助成金による競争激化';
-    }
-    
-    // 締切リスク
-    $deadline_analysis = gi_analyze_deadline_pressure($grant_details['deadline'] ?? '');
-    if ($deadline_analysis['is_urgent']) {
-        $risks[] = '申請期限切迫による準備不足リスク';
-    }
-    
-    // 複雑性リスク
-    if (($grant_details['grant_difficulty'] ?? 'normal') === 'hard') {
-        $risks[] = '申請要件の複雑性による不備リスク';
-    }
-    
-    return $risks;
-}
-
-function gi_calculate_document_priority($grant_details) {
-    $documents = [
-        [
-            'name' => '事業計画書（革新性・市場性・実現可能性を含む）',
-            'priority' => 'critical',
-            'importance_score' => 0.95,
-            'estimated_time' => '5-7日',
-            'preparation_tips' => [
-                '市場調査データの収集と分析',
-                '競合分析と差別化戦略の明確化',
-                '財務計画の詳細策定',
-                'リスク分析と対策の検討'
-            ]
-        ],
-        [
-            'name' => '技術資料・仕様書',
-            'priority' => 'high',
-            'importance_score' => 0.85,
-            'estimated_time' => '3-4日',
-            'preparation_tips' => [
-                '技術的優位性の定量的証明',
-                '開発スケジュールの詳細計画',
-                '品質管理・テスト計画'
-            ]
-        ],
-        [
-            'name' => '財務関連書類（決算書、資金計画等）',
-            'priority' => 'critical',
-            'importance_score' => 0.90,
-            'estimated_time' => '2-3日',
-            'preparation_tips' => [
-                '過去3年分の財務データ整理',
-                '資金調達計画の策定',
-                '収支予測の3シナリオ作成'
-            ]
-        ],
-        [
-            'name' => '会社案内・組織体制図',
-            'priority' => 'medium',
-            'importance_score' => 0.70,
-            'estimated_time' => '1-2日',
-            'preparation_tips' => [
-                '実績・受賞歴の整理',
-                'プロジェクトチーム体制の明確化',
-                '外部協力機関との連携体制'
-            ]
-        ]
-    ];
-    
-    // 助成金の特性に応じた優先度調整
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    
-    if ($characteristics['industry_type'] === 'it_digital') {
-        // IT系の場合は技術資料の重要度を上げる
-        foreach ($documents as &$doc) {
-            if (strpos($doc['name'], '技術資料') !== false) {
-                $doc['priority'] = 'critical';
-                $doc['importance_score'] = 0.92;
-            }
-        }
-    }
-    
-    return $documents;
-}
-
-function gi_calculate_grant_roi_potential($grant_details) {
-    $investment = floatval($grant_details['max_amount_numeric'] ?? 0);
-    
-    // 業界別基準ROI
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    $base_roi_by_industry = [
-        'it_digital' => 200,
-        'manufacturing' => 150,
-        'startup' => 250,
-        'sustainability' => 140,
-        'general' => 160
-    ];
-    
-    $base_roi = $base_roi_by_industry[$characteristics['industry_type']] ?? 160;
-    
-    // リスク調整
-    $risk_factors = 1.0;
-    if ($characteristics['complexity_level'] >= 8) {
-        $risk_factors *= 0.85; // 高複雑度はリスク増
-    }
-    
-    $projected_roi = $base_roi * $risk_factors;
-    $confidence = 0.75;
-    
-    // 成功率による調整
-    if (!empty($grant_details['adoption_rate'])) {
-        $success_rate = floatval($grant_details['adoption_rate']);
-        if ($success_rate >= 50) {
-            $confidence += 0.1;
-        } elseif ($success_rate < 20) {
-            $confidence -= 0.15;
-        }
-    }
-    
-    return [
-        'projected_roi' => $projected_roi,
-        'confidence' => min(0.9, max(0.5, $confidence)),
-        'investment_amount' => $investment,
-        'estimated_return' => $investment * ($projected_roi / 100),
-        'payback_period_months' => round(12 / ($projected_roi / 100))
-    ];
-}
-
-function gi_generate_success_optimization_actions($grant_details, $success_probability) {
-    $actions = [];
-    
-    // 成功確率が低い場合の改善アクション
-    if ($success_probability['overall_score'] < 0.6) {
-        $actions[] = [
-            'text' => sprintf('AI分析による弱点改善：成功確率を%s%%から%s%%に向上させる具体的改善プラン実行',
-                round($success_probability['overall_score'] * 100),
-                round(min(85, $success_probability['overall_score'] * 100 + 20))),
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'improvement',
-            'ai_confidence' => 0.88,
-            'completion_time' => '1-2週間',
-            'tips' => gi_generate_improvement_tips($success_probability['contributing_factors'])
-        ];
-    }
-    
-    // 差別化戦略
-    $actions[] = [
-        'text' => '競合他社との差別化要素3点以上の明確化と申請書への反映',
-        'priority' => 'high',
-        'checked' => false,
-        'category' => 'differentiation',
-        'ai_confidence' => 0.82,
-        'completion_time' => '2-3日',
-        'tips' => [
-            '技術的優位性の定量化',
-            '市場ポジションの独自性',
-            '実績・経験による信頼性',
-            'パートナー・協力機関の強み'
-        ]
-    ];
-    
-    return $actions;
-}
-
-function gi_generate_improvement_tips($contributing_factors) {
-    $tips = [];
-    
-    foreach ($contributing_factors as $factor => $impact) {
-        if ($impact < 0) { // 負の影響がある要因
-            switch ($factor) {
-                case 'amount_size':
-                    $tips[] = '申請金額の妥当性を再検討し、必要最小限に調整';
-                    break;
-                case 'deadline':
-                    $tips[] = '締切までの作業スケジュールを細分化し、外部サポート活用';
-                    break;
-                case 'difficulty':
-                    $tips[] = '専門家による申請書レビューと改善提案の実施';
-                    break;
-            }
-        }
-    }
-    
-    if (empty($tips)) {
-        $tips[] = '既存の強みをさらに強化し、アピールポイントを明確化';
-    }
-    
-    return $tips;
-}
-
-function gi_optimize_checklist_by_ai($checklist, $characteristics, $success_probability) {
-    // AI による チェックリストの最適化
-    
-    // 複雑度が高い場合は専門家サポートを推奨
-    if ($characteristics['complexity_level'] >= 8) {
-        array_unshift($checklist, [
-            'text' => '高複雑度助成金のため専門家（行政書士・中小企業診断士）への早期相談実施',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'expert_support',
-            'ai_confidence' => 0.94,
-            'completion_time' => '1日',
-            'tips' => ['業界特化型の専門家選択', '成功実績の確認', '費用対効果の検討']
-        ]);
-    }
-    
-    // 成功確率が低い場合は追加対策を推奨
-    if ($success_probability['overall_score'] < 0.5) {
-        array_splice($checklist, 2, 0, [[
-            'text' => '成功確率向上のための追加施策：類似成功事例の詳細分析と戦略調整',
-            'priority' => 'critical',
-            'checked' => false,
-            'category' => 'strategy_enhancement',
-            'ai_confidence' => 0.87,
-            'completion_time' => '2-3日',
-            'tips' => [
-                '過去3年間の採択事例分析',
-                '不採択理由の傾向調査',
-                '成功要因の自社事業への適用'
-            ]
-        ]]);
-    }
-    
-    return $checklist;
-}
-
-function gi_calculate_probability_confidence($grant_details, $probability_factors) {
-    // 確率計算の信頼度
-    $base_confidence = 0.7;
-    
-    // データの完全性
-    $data_completeness = 0;
-    $total_fields = 6;
-    
-    if (!empty($grant_details['max_amount'])) $data_completeness++;
-    if (!empty($grant_details['deadline'])) $data_completeness++;
-    if (!empty($grant_details['grant_target'])) $data_completeness++;
-    if (!empty($grant_details['organization'])) $data_completeness++;
-    if (!empty($grant_details['adoption_rate'])) $data_completeness++;
-    if (!empty($grant_details['grant_difficulty'])) $data_completeness++;
-    
-    $completeness_ratio = $data_completeness / $total_fields;
-    
-    return round($base_confidence * $completeness_ratio, 2);
-}
-
-function gi_assess_risk_level($probability) {
-    if ($probability >= 0.7) return 'low';
-    if ($probability >= 0.4) return 'medium';
-    return 'high';
-}
-
-function gi_generate_probability_improvement_suggestions($factors, $grant_details) {
-    $suggestions = [];
-    
-    foreach ($factors as $factor => $impact) {
-        if ($impact < -0.05) { // 大きな負の影響
-            switch ($factor) {
-                case 'deadline':
-                    $suggestions[] = '申請期限に余裕を持った準備スケジュール策定';
-                    break;
-                case 'amount_size':
-                    $suggestions[] = '申請金額の妥当性検証と適正化';
-                    break;
-                case 'industry':
-                    $suggestions[] = '業界トレンドとの整合性強化';
-                    break;
-            }
-        }
-    }
-    
-    if (empty($suggestions)) {
-        $suggestions[] = '現在の戦略を維持し、細部の品質向上に注力';
-    }
-    
-    return $suggestions;
-}
-
-/**
- * =============================================================================
- * 【高度AI機能】 - インテリジェントQ&Aサポート機能
- * =============================================================================
- */
-
-function gi_get_recommendation_level($score) {
-    if ($score >= 80) return '🌟 最優先推奨';
-    if ($score >= 70) return '⭐ 強く推奨';
-    if ($score >= 60) return '✅ 推奨';
-    if ($score >= 50) return '🤔 検討推奨';
-    return '❌ 要慎重検討';
-}
-
-function gi_get_difficulty_based_advice($complexity_level) {
-    if ($complexity_level >= 8) {
-        return "高複雑度助成金のため、専門家（行政書士・中小企業診断士）との連携を強く推奨。\n" .
-               "申請書作成に2-3週間、審査期間を含めて3-6ヶ月の計画が必要。";
-    } elseif ($complexity_level >= 6) {
-        return "中程度の複雑さのため、事前の情報収集と計画的な準備が重要。\n" .
-               "類似案件の成功事例研究と、社内体制の整備を優先。";
-    } else {
-        return "比較的申請しやすい助成金です。\n" .
-               "基本要件の確認と、明確な事業計画の策定に集中。";
-    }
-}
-
-function gi_get_amount_based_advice($amount_numeric) {
-    if ($amount_numeric >= 30000000) {
-        return "大型助成金のため、詳細な事業計画と財務計画が必須。\n" .
-               "段階的な資金活用計画と、明確なマイルストーンの設定が重要。";
-    } elseif ($amount_numeric >= 5000000) {
-        return "中規模助成金として、ROI計算と競合優位性の明確化が重要。\n" .
-               "自己資金の確保と、実現可能性の具体的な証明を重視。";
-    } else {
-        return "小規模助成金として、コスト効率と迅速な成果創出を重視。\n" .
-               "短期間での成果可視化と、次段階への発展計画を明示。";
-    }
-}
-
-function gi_generate_application_schedule($deadline_analysis, $complexity_level) {
-    $schedule = [];
-    $days_remaining = $deadline_analysis['days_remaining'] ?? 60;
-    
-    if ($days_remaining <= 14) {
-        // 緊急スケジュール
-        $schedule[] = "即日～3日：基本書類の準備とアウトライン作成";
-        $schedule[] = "4日～7日：事業計画書の詳細作成";
-        $schedule[] = "8日～10日：財務計画と根拠資料の整備";
-        $schedule[] = "11日～13日：最終チェックと提出準備";
-        $schedule[] = "14日：提出完了";
-    } elseif ($days_remaining <= 30) {
-        // 標準スケジュール
-        $schedule[] = "1週目：情報収集と基本方針の決定";
-        $schedule[] = "2週目：事業計画書の骨子作成";
-        $schedule[] = "3週目：詳細資料の作成と精緻化";
-        $schedule[] = "4週目：専門家レビューと最終調整";
-    } else {
-        // 余裕あるスケジュール
-        $schedule[] = "第1段階（1-2週間）：要件分析と戦略策定";
-        $schedule[] = "第2段階（3-4週間）：事業計画の詳細設計";
-        $schedule[] = "第3段階（5-6週間）：書類作成と根拠資料整備";
-        $schedule[] = "第4段階（7-8週間）：品質向上と最終チェック";
-    }
-    
-    return $schedule;
-}
-
-function gi_generate_eligibility_checklist($grant_details) {
-    $checks = [];
-    
-    // 基本チェック項目
-    $checks[] = "法人格の有無と設立年数の確認";
-    $checks[] = "業種・事業内容の対象範囲適合性";
-    $checks[] = "従業員数・資本金等の規模要件";
-    
-    // 金額に応じたチェック
-    $amount = floatval($grant_details['max_amount_numeric'] ?? 0);
-    if ($amount >= 10000000) {
-        $checks[] = "財務健全性の証明（直近3年の決算書）";
-        $checks[] = "事業継続性と成長計画の妥当性";
-    }
-    
-    // 業界特化チェック
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    switch ($characteristics['industry_type']) {
-        case 'it_digital':
-            $checks[] = "DX・IT導入の具体的計画と効果測定方法";
-            $checks[] = "情報セキュリティ対策の実施体制";
-            break;
-        case 'manufacturing':
-            $checks[] = "生産能力向上・品質改善の定量的目標";
-            $checks[] = "環境負荷軽減・省エネ効果の計画";
-            break;
-        case 'startup':
-            $checks[] = "事業の革新性・市場優位性の証明";
-            $checks[] = "創業チームの経験と実績";
-            break;
-    }
-    
-    // 地域要件
-    if (!empty($grant_details['regional_limitation'])) {
-        $checks[] = "地域要件の適合確認（本社・事業所所在地）";
-    }
-    
-    return $checks;
-}
-
-function gi_get_fit_level_description($fit_score) {
-    if ($fit_score >= 0.9) return "（🌟 完全適合）";
-    if ($fit_score >= 0.8) return "（⭐ 高適合）";
-    if ($fit_score >= 0.7) return "（✅ 適合）";
-    if ($fit_score >= 0.6) return "（🤔 要確認）";
-    return "（❌ 適合度低）";
-}
-
-function gi_get_risk_level_jp($risk_level) {
-    $risk_map = [
-        'low' => '🟢 低リスク',
-        'medium' => '🟡 中リスク', 
-        'high' => '🔴 高リスク'
-    ];
-    return $risk_map[$risk_level] ?? '不明';
-}
-
-function gi_get_factor_name_jp($factor) {
-    $factor_names = [
-        'amount_size' => '金額規模適正性',
-        'industry' => '業界政策適合性',
-        'difficulty' => '申請難易度バランス',
-        'deadline' => 'スケジュール余裕度',
-        'organization' => '実施機関信頼性',
-        'featured' => '注目助成金優遇'
-    ];
-    return $factor_names[$factor] ?? $factor;
-}
-
-function gi_get_competition_level_jp($level) {
-    $level_map = [
-        'low' => '🟢 競合少',
-        'medium' => '🟡 標準的',
-        'high' => '🔴 激戦'
-    ];
-    return $level_map[$level] ?? '標準的';
-}
-
-function gi_generate_differentiation_strategies($grant_details, $competitive_analysis) {
-    $strategies = [];
-    
-    // 基本的な差別化戦略
-    $strategies[] = "技術的独自性の定量的証明（特許、ノウハウ等）";
-    $strategies[] = "市場での先行優位性と参入障壁の明確化";
-    $strategies[] = "顧客基盤・パートナーシップの競争優位性";
-    
-    // 業界特化戦略
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    switch ($characteristics['industry_type']) {
-        case 'it_digital':
-            $strategies[] = "AIアルゴリズムの独自性とセキュリティレベル";
-            $strategies[] = "既存システムとの統合性と拡張性";
-            break;
-        case 'manufacturing':
-            $strategies[] = "生産効率・品質向上の数値的優位性";
-            $strategies[] = "環境負荷削減効果の科学的根拠";
-            break;
-        case 'startup':
-            $strategies[] = "ビジネスモデルの革新性と市場創造性";
-            $strategies[] = "スケーラビリティと国際展開可能性";
-            break;
-    }
-    
-    // 競合レベルに応じた戦略
-    if ($competitive_analysis['competitive_intensity'] === 'high') {
-        $strategies[] = "複数の差別化要素の組み合わせによるユニークポジション";
-        $strategies[] = "定量的効果測定による客観的優位性証明";
-    }
-    
-    return $strategies;
-}
-
-function gi_generate_recommended_actions($grant_details, $comprehensive_score, $success_probability) {
-    $actions = [];
-    
-    // スコアベースの推奨アクション
-    if ($comprehensive_score['total_score'] >= 80) {
-        $actions[] = "高スコア助成金のため、優先的に申請準備を開始";
-        $actions[] = "専門家レビューによる更なる品質向上";
-    } elseif ($comprehensive_score['total_score'] >= 60) {
-        $actions[] = "中評価助成金として、弱点補強後の申請を検討";
-        $actions[] = "類似助成金との比較検討も並行実施";
-    } else {
-        $actions[] = "低評価のため、要件見直しか他助成金の検討を推奨";
-        $actions[] = "事業計画の根本的な見直しが必要な可能性";
-    }
-    
-    // 成功確率ベースのアクション
-    if ($success_probability['overall_score'] < 0.5) {
-        $actions[] = "成功確率が低いため、改善策の実施が急務";
-        $actions[] = "外部専門家による戦略見直しを検討";
-    }
-    
-    // 緊急度ベースのアクション
-    $deadline_analysis = gi_analyze_deadline_pressure($grant_details['deadline'] ?? '');
-    if ($deadline_analysis['is_urgent']) {
-        $actions[] = "締切が迫っているため、即座の行動開始が必要";
-    }
-    
-    // 複雑度ベースのアクション
-    $characteristics = gi_analyze_grant_characteristics($grant_details);
-    if ($characteristics['complexity_level'] >= 7) {
-        $actions[] = "高複雑度のため、十分な準備期間と専門家支援を確保";
-    }
-    
-    return array_unique($actions);
-}
-
-function gi_calculate_self_funding_amount($grant_details) {
-    $total_amount = floatval($grant_details['max_amount_numeric'] ?? 0);
-    $subsidy_rate_text = $grant_details['subsidy_rate'] ?? '50%';
-    
-    // 補助率の数値抽出
-    $subsidy_rate = 0.5; // デフォルト50%
-    if (preg_match('/(\d+)/', $subsidy_rate_text, $matches)) {
-        $subsidy_rate = floatval($matches[1]) / 100;
-    }
-    
-    // 総事業費から助成金額を引いた自己負担額
-    $total_project_cost = $total_amount / $subsidy_rate;
-    $self_funding = $total_project_cost - $total_amount;
-    
-    return max(0, $self_funding);
-}
-
-/**
- * =============================================================================
- * 都道府県・市町村データ管理機能
- * =============================================================================
- */
-
-/**
- * 市町村フィルタリングでの連携機能を改善
- */
-function gi_enhance_municipality_filtering() {
-    // 既存の市町村タームに都道府県メタデータを追加
-    $municipalities = get_terms([
-        'taxonomy' => 'grant_municipality',
-        'hide_empty' => false
-    ]);
-    
-    foreach ($municipalities as $municipality) {
-        // 都道府県情報が無い場合は、スラッグから推定
-        if (!get_term_meta($municipality->term_id, 'prefecture_slug', true)) {
-            $slug_parts = explode('-', $municipality->slug);
-            if (count($slug_parts) >= 2) {
-                $pref_slug = $slug_parts[0];
-                $pref_term = get_term_by('slug', $pref_slug, 'grant_prefecture');
-                
-                if ($pref_term) {
-                    add_term_meta($municipality->term_id, 'prefecture_slug', $pref_slug);
-                    add_term_meta($municipality->term_id, 'prefecture_name', $pref_term->name);
-                }
-            }
-        }
-    }
-}
-
-/**
- * Note: gi_initialize_all_municipalities function is defined in theme-foundation.php
- * with enhanced error handling and comprehensive status reporting using gi_enhanced_init_municipalities_for_prefecture.
- */
-
-
-
-/**
- * 都道府県・市町村データ最適化 AJAX Handler
- */
-function gi_ajax_optimize_location_data() {
-    try {
-        if (!gi_verify_ajax_nonce()) {
-            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
-            return;
-        }
+function gi_openai_settings_page() {
+    // 設定保存処理
+    if (isset($_POST['submit']) && wp_verify_nonce($_POST['gi_openai_nonce'], 'gi_openai_settings')) {
+        $api_key = sanitize_text_field($_POST['gi_openai_api_key'] ?? '');
+        $model = sanitize_text_field($_POST['gi_openai_model'] ?? 'gpt-3.5-turbo');
+        $max_tokens = intval($_POST['gi_openai_max_tokens'] ?? 500);
+        $temperature = floatval($_POST['gi_openai_temperature'] ?? 0.7);
         
-        // 管理者権限チェック
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => '権限が不足しています']);
-            return;
-        }
+        update_option('gi_openai_api_key', $api_key);
+        update_option('gi_openai_model', $model);
+        update_option('gi_openai_max_tokens', $max_tokens);
+        update_option('gi_openai_temperature', $temperature);
         
-        // データ最適化実行
-        $result = gi_run_location_data_optimization();
+        echo '<div class="notice notice-success"><p>設定を保存しました。</p></div>';
+    }
+    
+    $current_api_key = get_option('gi_openai_api_key', '');
+    $current_model = get_option('gi_openai_model', 'gpt-3.5-turbo');
+    $current_max_tokens = get_option('gi_openai_max_tokens', 500);
+    $current_temperature = get_option('gi_openai_temperature', 0.7);
+    ?>
+    
+    <div class="wrap">
+        <h1>AI質問機能設定</h1>
+        <p>助成金詳細ページでユーザーがAIに質問できる機能の設定を行います。</p>
         
-        if ($result['success']) {
-            wp_send_json_success($result);
-        } else {
-            wp_send_json_error($result);
-        }
+        <form method="post">
+            <?php wp_nonce_field('gi_openai_settings', 'gi_openai_nonce'); ?>
+            
+            <table class="form-table">
+                <tr>
+                    <th scope="row">OpenAI API キー</th>
+                    <td>
+                        <input type="password" name="gi_openai_api_key" value="<?php echo esc_attr($current_api_key); ?>" class="regular-text" />
+                        <p class="description">
+                            OpenAIのAPIキーを入力してください。<br>
+                            APIキーは <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a> で取得できます。<br>
+                            <strong>空白の場合は簡易的なフォールバック応答を表示します。</strong>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">使用モデル</th>
+                    <td>
+                        <select name="gi_openai_model">
+                            <option value="gpt-3.5-turbo" <?php selected($current_model, 'gpt-3.5-turbo'); ?>>GPT-3.5 Turbo (推奨)</option>
+                            <option value="gpt-4" <?php selected($current_model, 'gpt-4'); ?>>GPT-4 (高精度・高コスト)</option>
+                            <option value="gpt-4-turbo" <?php selected($current_model, 'gpt-4-turbo'); ?>>GPT-4 Turbo</option>
+                        </select>
+                        <p class="description">利用するOpenAIのモデルを選択してください。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">最大トークン数</th>
+                    <td>
+                        <input type="number" name="gi_openai_max_tokens" value="<?php echo esc_attr($current_max_tokens); ?>" min="100" max="2000" />
+                        <p class="description">AIの応答の最大長さ (100-2000)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Temperature</th>
+                    <td>
+                        <input type="number" name="gi_openai_temperature" value="<?php echo esc_attr($current_temperature); ?>" min="0" max="2" step="0.1" />
+                        <p class="description">AIの創造性レベル (0.0: 堅実, 2.0: 創造的)</p>
+                    </td>
+                </tr>
+            </table>
+            
+            <?php submit_button('設定を保存'); ?>
+        </form>
         
-    } catch (Exception $e) {
-        error_log('Location Data Optimization AJAX Error: ' . $e->getMessage());
-        wp_send_json_error([
-            'message' => 'データ最適化中にエラーが発生しました',
-            'debug' => WP_DEBUG ? $e->getMessage() : null
-        ]);
+        <div class="card">
+            <h2>API接続テスト</h2>
+            <p>設定したAPIキーが正常に動作するかテストできます。</p>
+            <button type="button" id="test-openai-connection" class="button button-secondary">接続テスト</button>
+            <div id="test-result" style="margin-top: 15px;"></div>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                $('#test-openai-connection').on('click', function() {
+                    var button = $(this);
+                    var result = $('#test-result');
+                    
+                    button.prop('disabled', true).text('テスト中...');
+                    result.html('');
+                    
+                    $.post(ajaxurl, {
+                        action: 'gi_test_openai_connection',
+                        _wpnonce: '<?php echo wp_create_nonce("gi_test_openai"); ?>'
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            result.html('<div class="notice notice-success"><p>✅ ' + response.data.message + '</p></div>');
+                        } else {
+                            result.html('<div class="notice notice-error"><p>❌ ' + response.data.message + '</p></div>');
+                        }
+                    })
+                    .fail(function() {
+                        result.html('<div class="notice notice-error"><p>❌ 通信エラーが発生しました</p></div>');
+                    })
+                    .always(function() {
+                        button.prop('disabled', false).text('接続テスト');
+                    });
+                });
+            });
+            </script>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * OpenAI API接続テスト
+ */
+add_action('wp_ajax_gi_test_openai_connection', 'gi_ajax_test_openai_connection');
+function gi_ajax_test_openai_connection() {
+    if (!current_user_can('manage_options') || !wp_verify_nonce($_POST['_wpnonce'], 'gi_test_openai')) {
+        wp_send_json_error(['message' => '権限がありません']);
+        return;
+    }
+    
+    $api_key = get_option('gi_openai_api_key', '');
+    if (empty($api_key)) {
+        wp_send_json_error(['message' => 'APIキーが設定されていません']);
+        return;
+    }
+    
+    // テスト用のシンプルな質問でAPI接続確認
+    $test_response = gi_call_openai_api(
+        'あなたは助成金の専門アドバイザーです。', 
+        'こんにちは、接続テストです。', 
+        $api_key
+    );
+    
+    if ($test_response) {
+        wp_send_json_success(['message' => 'OpenAI APIに正常に接続できました']);
+    } else {
+        wp_send_json_error(['message' => 'APIキーが無効か、接続に失敗しました']);
     }
 }
 

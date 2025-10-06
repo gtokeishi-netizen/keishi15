@@ -2502,7 +2502,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="grant-ai-modal-container">
                     <div class="grant-ai-modal-header">
                         <div class="grant-ai-modal-title">
-                            <span>AI質問チャット</span>
+                            <span>この助成金について質問する</span>
                         </div>
                         <div class="grant-ai-modal-subtitle">${grantTitle}</div>
                         <button class="grant-ai-modal-close" onclick="closeAIChatModal()">
@@ -2513,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="grant-ai-chat-messages" id="ai-chat-messages-${postId}">
                             <div class="grant-ai-message grant-ai-message--assistant">
                                 <div class="grant-ai-message-content">
-                                    こんにちは！この助成金について何でもお聞きください。申請方法、対象要件、必要書類など、詳しくお答えします。
+                                    この助成金について何でもお聞きください。申請条件、必要書類、申請方法などについてお答えします。
                                 </div>
                             </div>
                         </div>
@@ -2522,7 +2522,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <textarea 
                                     class="grant-ai-chat-input" 
                                     id="ai-chat-input-${postId}"
-                                    placeholder="この助成金について質問してください..."
+                                    placeholder="例：申請条件は何ですか？必要書類を教えてください"
                                     rows="3"></textarea>
                                 <button 
                                     class="grant-ai-chat-send" 
@@ -2860,7 +2860,7 @@ document.head.appendChild(grantCardStyles);
                     data-grant-title="<?php echo esc_attr($title); ?>"
                     onclick="openGrantAIChat(this)" 
                     role="button">
-                <span>AIに質問</span>
+                <span>質問する</span>
             </button>
             <?php if ($official_url): ?>
             <a href="<?php echo esc_url($official_url); ?>" class="grant-btn grant-btn--secondary grant-btn--icon" target="_blank" rel="noopener noreferrer" role="button" title="公式サイト">
