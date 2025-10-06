@@ -234,25 +234,21 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         <div class="mobile-nav-tabs">
             <button class="nav-tab active" data-tab="chat">
                 <span class="nav-tab-icon">💬</span>
-                <span class="nav-tab-label">チャット</span>
             </button>
             <button class="nav-tab" data-tab="search">
                 <span class="nav-tab-icon">🔍</span>
-                <span class="nav-tab-label">検索</span>
             </button>
             <button class="nav-tab" data-tab="results">
                 <span class="nav-tab-icon">📋</span>
-                <span class="nav-tab-label">結果</span>
             </button>
             <button class="nav-tab" data-tab="favorites">
                 <span class="nav-tab-icon">⭐</span>
-                <span class="nav-tab-label">保存</span>
             </button>
         </div>
         
         <!-- Floating Results Button (Mobile Only) -->
         <button class="results-fab" id="mobile-results-fab">
-            結果
+            📋
         </button>
         
     </div>
@@ -694,23 +690,23 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     transform: scaleX(1);
 }
 
-/* Main Content - Balanced Chat:Results 40:60 Proportion */
+/* Main Content - Expanded Height for Better Visibility */
 .ai-main-content {
     display: grid;
-    grid-template-columns: 40% 60%;
+    grid-template-columns: 45% 55%;
     gap: 32px;
     margin-bottom: 48px;
-    min-height: 750px;
+    min-height: 900px;
 }
 
-/* AI Assistant Panel - Optimized for 40% Width and Better Height */
+/* AI Assistant Panel - Expanded Height for Better Chat History Visibility */
 .ai-assistant-panel {
     background: #fafafa;
     border-radius: 20px;
     border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 700px;
+    height: 850px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
 }
@@ -923,7 +919,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     overflow: hidden;
 }
 
-/* Chat Messages - Optimized for 700px Panel Height with Compact Text */
+/* Chat Messages - Expanded Height for Better Conversation History */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -931,8 +927,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: 400px;
-    max-height: 480px;
+    min-height: 500px;
+    max-height: 600px;
 }
 
 .message {
@@ -1080,13 +1076,13 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-color: #000;
 }
 
-/* Search Results Panel - Optimized for 60% Width */
+/* Search Results Panel - Expanded Height for Better Results Display */
 .search-results-panel {
     background: #fafafa;
     border-radius: 20px;
     padding: 20px;
     border: 2px solid #e0e0e0;
-    height: 700px;
+    height: 850px;
     overflow-y: auto;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
@@ -2029,7 +2025,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     font-size: 14px;
 }
 
-/* Tablet Layout - Improved Responsive Design */
+/* Tablet Layout - Improved Responsive Design with Taller Panels */
 @media (max-width: 1024px) {
     .ai-main-content {
         grid-template-columns: 1fr;
@@ -2038,14 +2034,19 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .ai-assistant-panel {
-        height: 500px;
+        height: 600px;
         order: 1;
         margin-bottom: 16px;
     }
     
+    .chat-messages {
+        min-height: 350px;
+        max-height: 420px;
+    }
+    
     .search-results-panel {
         order: 2;
-        height: 400px;
+        height: 500px;
     }
     
     .section-container {
@@ -2179,15 +2180,29 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     /* Better mobile grid layout for results */
-    .featured-grants {
-        display: block;
+    .featured-grants,
+    .results-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     
     .grant-card {
-        margin-bottom: 8px;
+        margin-bottom: 0;
         display: block;
         width: 100%;
         box-sizing: border-box;
+        flex-shrink: 0;
+    }
+    
+    /* Ensure search results are properly visible */
+    .results-container {
+        min-height: 300px;
+    }
+    
+    .search-results-panel .results-container {
+        height: calc(100% - 60px);
+        overflow-y: auto;
     }
     
     /* Optimize scrollbars for mobile */
@@ -2218,11 +2233,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         display: none;
     }
     
-    /* Mobile AI Assistant Panel - Ultra Compact */
+    /* Mobile AI Assistant Panel - Expanded for Better Chat History */
     .ai-assistant-panel {
-        height: 280px;
-        min-height: 280px;
-        max-height: 280px;
+        height: 400px;
+        min-height: 400px;
+        max-height: 400px;
         order: 1;
         position: relative;
         overflow: hidden;
@@ -2272,13 +2287,13 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         padding: 1px 4px;
     }
     
-    /* Mobile Chat Messages - Compact */
+    /* Mobile Chat Messages - Expanded for Better Visibility */
     .chat-messages {
-        padding: 6px;
-        gap: 6px;
-        min-height: 140px;
-        max-height: 160px;
-        font-size: 11px;
+        padding: 8px;
+        gap: 8px;
+        min-height: 220px;
+        max-height: 260px;
+        font-size: 12px;
     }
     
     .message-bubble {
@@ -2324,13 +2339,13 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         border-width: 1px;
     }
     
-    /* Mobile Search Results Panel - Ultra Compact */
+    /* Mobile Search Results Panel - Expanded for Better Results Display */
     .search-results-panel {
         order: 2;
-        height: 280px;
-        min-height: 280px;
-        max-height: 280px;
-        padding: 8px;
+        height: 400px;
+        min-height: 400px;
+        max-height: 400px;
+        padding: 12px;
         position: relative;
         overflow: hidden;
         width: 100%;
@@ -2443,7 +2458,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Larger Mobile/Small Tablet - 768px breakpoint */
+/* Larger Mobile/Small Tablet - 768px breakpoint with Better Heights */
 @media (max-width: 768px) and (min-width: 641px) {
     .monochrome-ai-search {
         padding: 60px 0 100px 0;
@@ -2470,11 +2485,16 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .ai-assistant-panel {
-        height: 450px;
+        height: 500px;
+    }
+    
+    .chat-messages {
+        min-height: 280px;
+        max-height: 340px;
     }
     
     .search-results-panel {
-        height: 350px;
+        height: 450px;
     }
     
     .quick-filters {
@@ -2499,7 +2519,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Extra Small Mobile - Highly Compressed */
+/* Extra Small Mobile - Better Height Allocation */
 @media (max-width: 480px) {
     .monochrome-ai-search {
         padding: 16px 0 24px 0;
@@ -2510,20 +2530,20 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .ai-assistant-panel {
-        height: 260px;
-        min-height: 260px;
-        max-height: 260px;
+        height: 380px;
+        min-height: 380px;
+        max-height: 380px;
     }
     
     .chat-messages {
-        min-height: 120px;
-        max-height: 140px;
+        min-height: 200px;
+        max-height: 240px;
     }
     
     .search-results-panel {
-        height: 260px;
-        min-height: 260px;
-        max-height: 260px;
+        height: 380px;
+        min-height: 380px;
+        max-height: 380px;
     }
     
     .quick-filters {
@@ -2682,7 +2702,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Ultra-small mobile phones (375px and below) - Maximum Compression */
+/* Ultra-small mobile phones (375px and below) - Balanced Height Allocation */
 @media (max-width: 375px) {
     .monochrome-ai-search {
         padding: 12px 0 20px 0;
@@ -2735,15 +2755,15 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .ai-assistant-panel {
-        height: 240px;
-        min-height: 240px;
-        max-height: 240px;
+        height: 360px;
+        min-height: 360px;
+        max-height: 360px;
     }
     
     .search-results-panel {
-        height: 240px;
-        min-height: 240px;
-        max-height: 240px;
+        height: 360px;
+        min-height: 360px;
+        max-height: 360px;
     }
     
     .section-container {
@@ -2751,8 +2771,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .chat-messages {
-        min-height: 100px;
-        max-height: 120px;
+        min-height: 180px;
+        max-height: 220px;
     }
     
     .message-bubble {
@@ -2956,7 +2976,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Ultra-small screens - Extreme Optimization */
+/* Ultra-small screens - Balanced Optimization */
 @media (max-width: 360px) {
     .section-container {
         padding: 0 2px;
@@ -2966,15 +2986,15 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     .search-results-panel {
         margin: 0;
         border-radius: 6px;
-        height: 220px;
-        min-height: 220px;
-        max-height: 220px;
+        height: 340px;
+        min-height: 340px;
+        max-height: 340px;
     }
     
     .chat-messages {
-        min-height: 80px;
-        max-height: 100px;
-        padding: 4px;
+        min-height: 160px;
+        max-height: 200px;
+        padding: 6px;
     }
     
     .message-bubble {
@@ -3019,28 +3039,27 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         font-size: 7px;
     }
     
-    /* Mobile Navigation Tabs - Compact */
+    /* Mobile Navigation Tabs - Icon Only Clean Design */
     .mobile-nav-tabs {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        height: 48px;
-        background: #fff;
+        height: 50px;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
         border-top: 1px solid #e0e0e0;
         display: flex;
         z-index: 300;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 -2px 20px rgba(0,0,0,0.1);
     }
     
     .nav-tab {
         flex: 1;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
-        padding: 4px 2px;
+        padding: 8px 4px;
         border: none;
         background: none;
         color: #666;
@@ -3055,35 +3074,35 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .nav-tab-icon {
-        font-size: 14px;
+        font-size: 18px;
         filter: grayscale(1);
-    }
-    
-    .nav-tab-label {
-        font-weight: 500;
-        font-size: 8px;
     }
     
     .nav-tab.active .nav-tab-icon {
         filter: none;
+        transform: scale(1.1);
     }
     
-    /* Floating Action Button for Results - Compact */
+    .nav-tab:hover .nav-tab-icon {
+        transform: scale(1.05);
+    }
+    
+    /* Floating Action Button for Results - Icon Only */
     .results-fab {
         position: fixed;
-        bottom: 60px;
+        bottom: 65px;
         right: 12px;
-        width: 40px;
-        height: 40px;
-        border-radius: 20px;
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
         background: #000;
         color: #fff;
         border: none;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 3px 12px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 16px;
         font-weight: 600;
         z-index: 250;
         cursor: pointer;
@@ -3433,9 +3452,23 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 return;
             }
 
-            container.innerHTML = grants.map(grant => this.createGrantCard(grant)).join('');
+            // Clear existing results first
+            container.innerHTML = '';
+            
+            // Create and append grant cards
+            const cardsHTML = grants.map(grant => this.createGrantCard(grant)).join('');
+            container.innerHTML = cardsHTML;
+            
+            // Ensure container is visible and scrollable
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.gap = '12px';
+            
             this.animateCards();
             this.bindGrantCardEvents();
+            
+            // Show results panel on mobile
+            this.showResultsOnMobile();
         }
 
         createGrantCard(grant) {
@@ -4329,6 +4362,28 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             container.scrollTop = container.scrollHeight;
             
             return indicator;
+        }
+
+        // Enhanced method to show results on mobile
+        showResultsOnMobile() {
+            const isMobile = window.innerWidth <= 640;
+            if (!isMobile) return;
+            
+            const resultsTab = document.querySelector('[data-tab="results"]');
+            const resultsFab = document.getElementById('mobile-results-fab');
+            
+            // Show FAB if there are results
+            const hasResults = document.querySelectorAll('.grant-card').length > 0;
+            if (resultsFab) {
+                resultsFab.classList.toggle('show', hasResults);
+            }
+            
+            // Auto-switch to results tab if user just performed a search
+            if (resultsTab && hasResults) {
+                setTimeout(() => {
+                    resultsTab.click();
+                }, 800);
+            }
         }
 
         // Utility Methods
