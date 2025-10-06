@@ -3154,8 +3154,11 @@ function addToCompare(button) {
     
     window.compareList.push({ id: postId, title: grantTitle });
     button.classList.add('active');
-    showToast('比較に追加しました');
+    showToast(`「${grantTitle}」を比較に追加しました（${window.compareList.length}/3）`);
     updateCompareButton();
+    
+    // デバッグ情報
+    console.log('比較リスト更新:', window.compareList);
 }
 
 /**
@@ -3174,7 +3177,12 @@ function updateCompareButton() {
             document.body.appendChild(compareBtn);
         }
         compareBtn.innerHTML = `
-            <span>${window.compareList.length}件を比較</span>
+            <svg style="width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18"/>
+                <path d="M7 12h10"/>
+                <path d="M10 18h4"/>
+            </svg>
+            <span>${window.compareList.length}件を比較する</span>
         `;
         compareBtn.style.display = 'flex';
     } else if (compareBtn) {
@@ -3226,11 +3234,22 @@ function showCompareModal() {
             nonce: '<?php echo wp_create_nonce("gi_ai_search_nonce"); ?>'
         })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+    })
     .then(data => {
+        console.log('比較API応答:', data); // デバッグ用
+        
         if (data.success) {
             const comparison = data.data.comparison;
             const recommendation = data.data.recommendation;
+            
+            if (!comparison || comparison.length === 0) {
+                throw new Error('比較データが空です');
+            }
             
             const tableHtml = `
                 <div class="ai-recommend-box">
@@ -3268,7 +3287,28 @@ function showCompareModal() {
             modal.querySelector('.ai-compare-loading').style.display = 'none';
             modal.querySelector('.ai-compare-result').style.display = 'block';
             modal.querySelector('.ai-compare-result').innerHTML = tableHtml;
+        } else {
+            throw new Error(data.message || '比較処理に失敗しました');
         }
+    })
+    .catch(error => {
+        console.error('比較エラー:', error);
+        
+        modal.querySelector('.ai-compare-loading').style.display = 'none';
+        modal.querySelector('.ai-compare-result').style.display = 'block';
+        modal.querySelector('.ai-compare-result').innerHTML = `
+            <div class="ai-error-message" style="text-align: center; padding: 2rem; color: #dc2626;">
+                <h4>比較処理エラー</h4>
+                <p>比較データの取得に失敗しました。</p>
+                <p style="font-size: 0.875rem; color: #6b7280;">エラー: ${error.message}</p>
+                <button onclick="this.closest('.ai-compare-modal').remove()" 
+                        style="margin-top: 1rem; padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">
+                    閉じる
+                </button>
+            </div>
+        `;
+        
+        showToast('比較処理に失敗しました', 'error');
     });
 }
 
