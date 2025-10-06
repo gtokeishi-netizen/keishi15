@@ -684,6 +684,35 @@ $region_mapping = [
     .clean-sidebar {
         position: sticky;
         top: 120px;
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+        padding-right: var(--space-2);
+    }
+    
+    /* サイドバーのスクロールバー */
+    .clean-sidebar::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .clean-sidebar::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: var(--radius-md);
+    }
+    
+    .clean-sidebar::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+    }
+    
+    .clean-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-600);
+    }
+    
+    /* Firefox scrollbar */
+    .clean-sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--gray-400) var(--gray-100);
     }
     
     .clean-filter-card {
@@ -727,6 +756,29 @@ $region_mapping = [
     
     .clean-filter-body {
         padding: var(--space-4);
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--gray-400) var(--gray-100);
+    }
+    
+    .clean-filter-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .clean-filter-body::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: var(--radius-sm);
+    }
+    
+    .clean-filter-body::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+    }
+    
+    .clean-filter-body::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-600);
     }
     
     .clean-filter-group {
@@ -850,16 +902,9 @@ $region_mapping = [
     
     .clean-grants-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-4);
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: var(--space-6);
         margin-bottom: var(--space-8);
-    }
-    
-    /* 3列グリッドのレスポンシブ対応 */
-    @media (max-width: 1200px) {
-        .clean-grants-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
     }
     
     .clean-grants-list {
@@ -1056,6 +1101,18 @@ $region_mapping = [
             z-index: 1000;
             transition: left 0.3s ease;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+            overscroll-behavior: contain;
+            max-height: 100vh;
+        }
+        
+        .clean-filter-body {
+            max-height: calc(100vh - 120px);
+            padding-bottom: var(--space-8); /* 底部余白确保内容可以完全滚动 */
+        }
+        
+        .clean-filter-list-container {
+            max-height: 240px; /* モバイルでは少し小さく */
         }
         
         .clean-sidebar.active {
@@ -1335,37 +1392,91 @@ $region_mapping = [
         background: rgba(255, 255, 255, 0.2);
     }
     
-    /* ===== FILTER LIST CONTAINER WITH SCROLL ===== */
+    /* ===== ENHANCED FILTER LIST CONTAINER WITH SMOOTH SCROLL ===== */
     .clean-filter-list-container {
-        max-height: 300px;
+        max-height: 280px;
         overflow-y: auto;
         margin-bottom: var(--space-3);
         padding-right: var(--space-1);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        scroll-behavior: smooth;
+        overscroll-behavior: contain;
     }
     
     .clean-filter-list-container::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
     }
     
     .clean-filter-list-container::-webkit-scrollbar-track {
-        background: var(--gray-100);
-        border-radius: var(--radius-sm);
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        margin: 4px 0;
     }
     
     .clean-filter-list-container::-webkit-scrollbar-thumb {
-        background: var(--gray-400);
-        border-radius: var(--radius-sm);
-        transition: var(--transition);
+        background: linear-gradient(180deg, var(--gray-400) 0%, var(--gray-500) 100%);
+        border-radius: var(--radius-md);
+        border: 2px solid var(--gray-50);
+        transition: all 0.3s ease;
     }
     
     .clean-filter-list-container::-webkit-scrollbar-thumb:hover {
-        background: var(--gray-600);
+        background: linear-gradient(180deg, var(--gray-600) 0%, var(--gray-700) 100%);
+        border-color: var(--white);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .clean-filter-list-container::-webkit-scrollbar-thumb:active {
+        background: var(--gray-800);
     }
     
     /* Firefox scrollbar */
     .clean-filter-list-container {
         scrollbar-width: thin;
-        scrollbar-color: var(--gray-400) var(--gray-100);
+        scrollbar-color: var(--gray-400) var(--gray-50);
+    }
+    
+    /* スクロール位置インジケーター */
+    .clean-filter-list-container {
+        position: relative;
+    }
+    
+    .clean-filter-list-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 8px;
+        height: 20px;
+        background: linear-gradient(180deg, var(--white) 0%, transparent 100%);
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .clean-filter-list-container::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 8px;
+        height: 20px;
+        background: linear-gradient(0deg, var(--white) 0%, transparent 100%);
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .clean-filter-list-container.has-scroll-top::before {
+        opacity: 1;
+    }
+    
+    .clean-filter-list-container.has-scroll-bottom::after {
+        opacity: 1;
     }
     
     /* Scroll fade indicators */
@@ -2448,7 +2559,7 @@ $region_mapping = [
                                 </button>
                             </div>
                             <!-- カテゴリリスト（チェックボックス形式） -->
-                            <div class="clean-filter-list-container" style="max-height: 250px;">
+                            <div class="clean-filter-list-container" style="max-height: 320px;">
                                 <?php 
                                 $category_limit = 12;
                                 $selected_categories = explode(',', $search_params['category']);
@@ -2826,6 +2937,9 @@ $region_mapping = [
         
         // Initialize scroll indicators
         initScrollIndicators();
+        
+        // Initialize mobile scroll enhancements
+        initMobileScrollEnhancements();
     }
     
     /**
@@ -3520,7 +3634,7 @@ $region_mapping = [
     }
     
     /**
-     * Initialize scroll indicators for filter lists
+     * Initialize enhanced scroll indicators for filter lists
      */
     function initScrollIndicators() {
         document.querySelectorAll('.clean-filter-list-container').forEach(container => {
@@ -3528,31 +3642,101 @@ $region_mapping = [
             
             function updateScrollIndicator() {
                 const hasScroll = container.scrollHeight > container.clientHeight;
-                const isScrolledToBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 5;
+                const scrollTop = container.scrollTop;
+                const scrollBottom = container.scrollTop + container.clientHeight;
+                const scrollHeight = container.scrollHeight;
                 
+                // Top fade indicator
+                const hasScrollTop = scrollTop > 10;
+                const hasScrollBottom = scrollBottom < scrollHeight - 10;
+                
+                container.classList.toggle('has-scroll-top', hasScrollTop);
+                container.classList.toggle('has-scroll-bottom', hasScrollBottom);
+                
+                // Legacy support
                 if (filterGroup) {
-                    filterGroup.classList.toggle('has-scroll', hasScroll && !isScrolledToBottom);
+                    filterGroup.classList.toggle('has-scroll', hasScrollBottom);
                 }
             }
             
             // Initial check
-            updateScrollIndicator();
+            setTimeout(updateScrollIndicator, 100);
             
-            // Update on scroll
-            container.addEventListener('scroll', updateScrollIndicator);
+            // Update on scroll with throttling
+            let scrollTimeout;
+            container.addEventListener('scroll', () => {
+                if (scrollTimeout) return;
+                scrollTimeout = setTimeout(() => {
+                    updateScrollIndicator();
+                    scrollTimeout = null;
+                }, 16); // ~60fps
+            }, { passive: true });
             
             // Update on resize
             window.addEventListener('resize', updateScrollIndicator);
             
             // Update when filter items are shown/hidden
-            const observer = new MutationObserver(updateScrollIndicator);
+            const observer = new MutationObserver(() => {
+                setTimeout(updateScrollIndicator, 50);
+            });
             observer.observe(container, { 
                 childList: true, 
                 subtree: true, 
                 attributes: true, 
                 attributeFilter: ['class', 'style'] 
             });
+            
+            // Smooth scroll to selected items
+            const checkedItems = container.querySelectorAll('input:checked');
+            if (checkedItems.length > 0) {
+                setTimeout(() => {
+                    const firstChecked = checkedItems[0].closest('.clean-filter-option');
+                    if (firstChecked) {
+                        firstChecked.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'nearest' 
+                        });
+                    }
+                }, 200);
+            }
         });
+    }
+    
+    /**
+     * Enhanced smooth scrolling for mobile
+     */
+    function initMobileScrollEnhancements() {
+        if ('ontouchstart' in window) {
+            // iOS momentum scrolling
+            document.querySelectorAll('.clean-filter-list-container, .clean-sidebar, .clean-filter-body').forEach(element => {
+                element.style.webkitOverflowScrolling = 'touch';
+                element.style.overscrollBehavior = 'contain';
+            });
+            
+            // Prevent body scroll when scrolling inside containers
+            document.querySelectorAll('.clean-filter-list-container').forEach(container => {
+                let startY = 0;
+                
+                container.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].pageY;
+                }, { passive: true });
+                
+                container.addEventListener('touchmove', (e) => {
+                    const currentY = e.touches[0].pageY;
+                    const scrollTop = container.scrollTop;
+                    const scrollHeight = container.scrollHeight;
+                    const clientHeight = container.clientHeight;
+                    
+                    if (
+                        (currentY > startY && scrollTop === 0) ||
+                        (currentY < startY && scrollTop + clientHeight >= scrollHeight)
+                    ) {
+                        // Allow native overscroll behavior
+                        return;
+                    }
+                }, { passive: true });
+            });
+        }
     }
     
     /**
@@ -3571,9 +3755,21 @@ $region_mapping = [
     
     // Initialize
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            // Re-initialize scroll indicators after DOM is fully loaded
+            setTimeout(() => {
+                initScrollIndicators();
+                initMobileScrollEnhancements();
+            }, 300);
+        });
     } else {
         init();
+        // Re-initialize scroll indicators immediately
+        setTimeout(() => {
+            initScrollIndicators();
+            initMobileScrollEnhancements();
+        }, 100);
     }
 })();
 
