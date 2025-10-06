@@ -73,6 +73,11 @@ add_action('wp_ajax_nopriv_gi_ai_feedback', 'gi_ajax_submit_ai_feedback');
 
 // 市町村取得機能
 add_action('wp_ajax_gi_get_municipalities_for_prefectures', 'gi_ajax_get_municipalities_for_prefectures');
+add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefectures', 'gi_ajax_get_municipalities_for_prefectures');
+
+// 単一都道府県の市町村取得機能
+add_action('wp_ajax_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
+add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
 
 // AI チェックリスト生成機能
 add_action('wp_ajax_gi_generate_checklist', 'gi_ajax_generate_checklist');
@@ -4931,4 +4936,138 @@ function gi_initialize_all_municipalities() {
         'created' => $created_count,
         'updated' => $updated_count
     ];
+}
+
+/**
+ * 単一都道府県の市町村取得（上部フィルター用）
+ */
+function gi_ajax_get_municipalities_for_prefecture() {
+    try {
+        // セキュリティチェック
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        $prefecture_slug = sanitize_text_field($_POST['prefecture_slug'] ?? '');
+        
+        if (empty($prefecture_slug)) {
+            wp_send_json_error(['message' => '都道府県が指定されていません']);
+            return;
+        }
+        
+        // 市町村を取得
+        $municipalities = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => 'prefecture_slug',
+                    'value' => $prefecture_slug,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+        
+        if (is_wp_error($municipalities)) {
+            wp_send_json_error(['message' => '市町村データの取得に失敗しました']);
+            return;
+        }
+        
+        $municipality_data = [];
+        foreach ($municipalities as $municipality) {
+            $municipality_data[] = [
+                'slug' => $municipality->slug,
+                'name' => $municipality->name,
+                'count' => $municipality->count
+            ];
+        }
+        
+        wp_send_json_success([
+            'municipalities' => $municipality_data,
+            'prefecture_slug' => $prefecture_slug,
+            'count' => count($municipality_data)
+        ]);
+        
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => '市町村データの取得中にエラーが発生しました',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
+    }
+}
+
+/**
+ * 複数都道府県の市町村取得（サイドバーフィルター用）
+ */
+function gi_ajax_get_municipalities_for_prefectures() {
+    try {
+        // セキュリティチェック
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        $prefecture_slugs_json = $_POST['prefecture_slugs'] ?? '[]';
+        $prefecture_slugs = json_decode(stripslashes($prefecture_slugs_json), true);
+        
+        if (!is_array($prefecture_slugs) || empty($prefecture_slugs)) {
+            wp_send_json_error(['message' => '都道府県が指定されていません']);
+            return;
+        }
+        
+        // 市町村を取得
+        $municipalities = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => 'prefecture_slug',
+                    'value' => $prefecture_slugs,
+                    'compare' => 'IN'
+                ]
+            ],
+            'number' => 200  // 最大200件
+        ]);
+        
+        if (is_wp_error($municipalities)) {
+            wp_send_json_error(['message' => '市町村データの取得に失敗しました']);
+            return;
+        }
+        
+        $municipality_data = [];
+        foreach ($municipalities as $municipality) {
+            $prefecture_name = get_term_meta($municipality->term_id, 'prefecture_name', true);
+            $municipality_data[] = [
+                'slug' => $municipality->slug,
+                'name' => $municipality->name,
+                'count' => $municipality->count,
+                'prefecture_name' => $prefecture_name
+            ];
+        }
+        
+        // 都道府県ごとにグループ化
+        $grouped_municipalities = [];
+        foreach ($municipality_data as $municipality) {
+            $pref_name = $municipality['prefecture_name'] ?? '不明';
+            $grouped_municipalities[$pref_name][] = $municipality;
+        }
+        
+        wp_send_json_success([
+            'municipalities' => $municipality_data,
+            'grouped_municipalities' => $grouped_municipalities,
+            'prefecture_slugs' => $prefecture_slugs,
+            'count' => count($municipality_data)
+        ]);
+        
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => '市町村データの取得中にエラーが発生しました',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
+    }
 }

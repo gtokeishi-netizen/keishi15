@@ -30,7 +30,8 @@ $required_functions = [
 $search_params = [
     'search' => sanitize_text_field($_GET['s'] ?? ''),
     'category' => sanitize_text_field($_GET['category'] ?? $_GET['grant_category'] ?? ''),
-    // Prefecture and municipality filters removed per user request
+    'prefecture' => sanitize_text_field($_GET['prefecture'] ?? ''),
+    'municipality' => sanitize_text_field($_GET['municipality'] ?? ''),
     'region' => sanitize_text_field($_GET['region'] ?? ''),
     'amount' => sanitize_text_field($_GET['amount'] ?? ''),
     'status' => sanitize_text_field($_GET['status'] ?? ''),
@@ -47,7 +48,7 @@ $search_params = [
 $stats = function_exists('gi_get_cached_stats') ? gi_get_cached_stats() : [
     'total_grants' => wp_count_posts('grant')->publish ?? 0,
     'active_grants' => 0,
-    // Prefecture count removed
+    'prefecture_count' => count(get_terms(['taxonomy' => 'grant_prefecture', 'hide_empty' => true])),
     'avg_success_rate' => 65
 ];
 
@@ -80,8 +81,22 @@ if (!empty($search_params['category'])) {
         'terms' => explode(',', $search_params['category'])
     ];
 }
-// Prefecture filtering removed per user request
-// Municipality filtering removed per user request
+// 都道府県フィルター
+if (!empty($search_params['prefecture'])) {
+    $tax_query[] = [
+        'taxonomy' => 'grant_prefecture',
+        'field' => 'slug',
+        'terms' => explode(',', $search_params['prefecture'])
+    ];
+}
+// 市町村フィルター
+if (!empty($search_params['municipality'])) {
+    $tax_query[] = [
+        'taxonomy' => 'grant_municipality',
+        'field' => 'slug',
+        'terms' => explode(',', $search_params['municipality'])
+    ];
+}
 if (count($tax_query) > 1) {
     $initial_args['tax_query'] = $tax_query;
 }
@@ -141,7 +156,47 @@ $all_categories = get_terms([
     'order' => 'DESC'
 ]);
 
-// Prefecture and municipality taxonomy code removed per user request
+// 都道府県タクソノミー取得
+$all_prefectures = get_terms([
+    'taxonomy' => 'grant_prefecture',
+    'hide_empty' => true,
+    'orderby' => 'name',
+    'order' => 'ASC'
+]);
+
+// 市町村タクソノミー取得
+$all_municipalities = [];
+if (!empty($search_params['prefecture'])) {
+    // 選択された都道府県の市町村のみ取得
+    $prefecture_slugs = explode(',', $search_params['prefecture']);
+    foreach ($prefecture_slugs as $pref_slug) {
+        $pref_municipalities = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => 'parent_prefecture',
+                    'value' => $pref_slug,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+        if (!is_wp_error($pref_municipalities)) {
+            $all_municipalities = array_merge($all_municipalities, $pref_municipalities);
+        }
+    }
+} else {
+    // すべての市町村を取得（制限付き）
+    $all_municipalities = get_terms([
+        'taxonomy' => 'grant_municipality',
+        'hide_empty' => true,
+        'orderby' => 'count',
+        'order' => 'DESC',
+        'number' => 50  // 最大50件
+    ]);
+}
 ?>
 
 <!DOCTYPE html>
@@ -1544,7 +1599,60 @@ $all_categories = get_terms([
         border-color: var(--primary-dark);
     }
     
-    /* Prefecture and region filter styling removed per user request */
+    /* Prefecture and Municipality Filter Styling */
+    .prefecture-filter-group,
+    .municipality-filter-group {
+        background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+        border-radius: var(--radius-xl);
+        padding: var(--space-5);
+        margin-bottom: var(--space-6);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--gray-200);
+    }
+    
+    .prefecture-option,
+    .municipality-option {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: var(--radius-md);
+        margin-bottom: 2px;
+    }
+    
+    .prefecture-option:hover,
+    .municipality-option:hover {
+        background: var(--gray-50);
+        transform: translateX(4px);
+    }
+    
+    .prefecture-option input:checked + .clean-filter-label,
+    .municipality-option input:checked + .clean-filter-label {
+        font-weight: 700;
+        color: var(--primary);
+    }
+    
+    .prefecture-search-wrapper,
+    .municipality-search-wrapper {
+        position: relative;
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--white);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        padding: var(--space-1);
+        margin-bottom: var(--space-3);
+    }
+    
+    .loading-municipality-message {
+        text-align: center;
+        padding: var(--space-8) var(--space-4);
+        color: var(--gray-600);
+        font-size: 0.875rem;
+    }
+    
+    .loading-municipality-message i {
+        margin-right: var(--space-2);
+        color: var(--primary);
+    }
     
     .filter-sub-title {
         font-size: 0.6875rem;
@@ -1602,7 +1710,27 @@ $all_categories = get_terms([
         }
     }
     
-    /* Prefecture and municipality animations removed */
+    /* Prefecture and Municipality Animations */
+    .prefecture-option,
+    .municipality-option {
+        animation: slideIn 0.2s ease-out;
+    }
+    
+    .prefecture-filter-group,
+    .municipality-filter-group {
+        animation: fadeInUp 0.3s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
     
     /* レスポンシブ対応 */
     @media (max-width: 1024px) {
@@ -1613,7 +1741,31 @@ $all_categories = get_terms([
     }
     
     @media (max-width: 768px) {
-        /* Prefecture and region responsive styling removed */
+        /* Prefecture and Municipality Responsive Styling */
+    @media (max-width: 768px) {
+        .prefecture-filter-group,
+        .municipality-filter-group {
+            padding: var(--space-4);
+        }
+        
+        .prefecture-search-wrapper,
+        .municipality-search-wrapper {
+            margin-bottom: var(--space-2);
+        }
+        
+        .filter-sub-title {
+            font-size: 0.625rem;
+        }
+        
+        .top-filter-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-2);
+        }
+        
+        .top-filter-column {
+            width: 100%;
+        }
+    }
         
         .top-filter-bar {
             padding: var(--space-3);
@@ -2071,7 +2223,6 @@ $all_categories = get_terms([
                 詳細検索条件
             </h3>
             <div class="top-filter-grid">
-                <!-- Region filter removed per user request -->
                 <div class="top-filter-column">
                     <label class="top-filter-label">カテゴリ</label>
                     <select class="top-filter-select" id="top-category-select">
@@ -2081,6 +2232,34 @@ $all_categories = get_terms([
                             <option value="<?php echo esc_attr($category->slug); ?>" 
                                     <?php selected(in_array($category->slug, explode(',', $search_params['category']))); ?>>
                                 <?php echo esc_html($category->name); ?> (<?php echo $category->count; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="top-filter-column">
+                    <label class="top-filter-label">都道府県</label>
+                    <select class="top-filter-select" id="top-prefecture-select">
+                        <option value="">全国</option>
+                        <?php if (!empty($all_prefectures) && !is_wp_error($all_prefectures)): ?>
+                            <?php foreach ($all_prefectures as $prefecture): ?>
+                            <option value="<?php echo esc_attr($prefecture->slug); ?>" 
+                                    <?php selected(in_array($prefecture->slug, explode(',', $search_params['prefecture']))); ?>>
+                                <?php echo esc_html($prefecture->name); ?> (<?php echo $prefecture->count; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="top-filter-column">
+                    <label class="top-filter-label">市町村</label>
+                    <select class="top-filter-select" id="top-municipality-select">
+                        <option value="">都道府県を選択してください</option>
+                        <?php if (!empty($all_municipalities) && !is_wp_error($all_municipalities)): ?>
+                            <?php foreach ($all_municipalities as $municipality): ?>
+                            <option value="<?php echo esc_attr($municipality->slug); ?>" 
+                                    <?php selected(in_array($municipality->slug, explode(',', $search_params['municipality']))); ?>>
+                                <?php echo esc_html($municipality->name); ?> (<?php echo $municipality->count; ?>)
                             </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -2152,8 +2331,123 @@ $all_categories = get_terms([
                                 <span class="clean-filter-label">おすすめの助成金のみ</span>
                             </label>
                         </div>
-                        
-                        <!-- Prefecture/Region search functionality removed per user request -->
+
+                        <!-- Prefecture Filters -->
+                        <?php if (!empty($all_prefectures) && !is_wp_error($all_prefectures)): ?>
+                        <div class="clean-filter-group prefecture-filter-group">
+                            <h4 class="clean-filter-group-title">
+                                <i class="fas fa-map-marker-alt"></i>
+                                都道府県
+                                <span class="filter-search-toggle" onclick="togglePrefectureSearch()" title="都道府県検索">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </h4>
+                            
+                            <!-- 都道府県検索フィールド -->
+                            <div class="prefecture-search-wrapper" id="prefecture-search-wrapper" style="display: none; margin-bottom: 1rem;">
+                                <input type="text" id="prefecture-search-input" placeholder="都道府県名で検索..." 
+                                       class="clean-filter-search-input" onkeyup="filterPrefectures(this.value)">
+                                <button type="button" class="filter-search-clear" onclick="clearPrefectureSearch()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- 都道府県リスト -->
+                            <div class="clean-filter-list-container" style="max-height: 320px;">
+                                <?php 
+                                $prefecture_limit = 10;
+                                $selected_prefectures = explode(',', $search_params['prefecture']);
+                                $prefecture_count = count($all_prefectures);
+                                
+                                $has_selected_pref = !empty(array_filter($selected_prefectures));
+                                $show_all_pref_initially = $has_selected_pref;
+                                
+                                foreach ($all_prefectures as $index => $prefecture): 
+                                    $is_selected_pref = in_array($prefecture->slug, $selected_prefectures);
+                                    $is_hidden = !$show_all_pref_initially && $index >= $prefecture_limit;
+                                ?>
+                                <label class="clean-filter-option prefecture-option <?php echo $is_hidden ? 'clean-filter-more-item hidden' : ''; ?>" 
+                                       data-prefecture-name="<?php echo esc_attr(strtolower($prefecture->name)); ?>" 
+                                       title="<?php echo esc_attr($prefecture->name); ?>">
+                                    <input type="checkbox" 
+                                           name="prefectures[]" 
+                                           value="<?php echo esc_attr($prefecture->slug); ?>" 
+                                           class="clean-filter-checkbox prefecture-checkbox"
+                                           <?php checked($is_selected_pref); ?>>
+                                    <span class="clean-filter-label"><?php echo esc_html($prefecture->name); ?></span>
+                                    <?php if ($prefecture->count > 0): ?>
+                                    <span class="clean-filter-count"><?php echo esc_html($prefecture->count); ?></span>
+                                    <?php endif; ?>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ($prefecture_count > $prefecture_limit): ?>
+                            <button type="button" class="clean-filter-more-btn" data-target="prefecture">
+                                <span class="show-more-text <?php echo $show_all_pref_initially ? 'hidden' : ''; ?>">
+                                    <i class="fas fa-chevron-down"></i> さらに表示 (+<?php echo $prefecture_count - $prefecture_limit; ?>)
+                                </span>
+                                <span class="show-less-text <?php echo !$show_all_pref_initially ? 'hidden' : ''; ?>">
+                                    <i class="fas fa-chevron-up"></i> 表示を減らす
+                                </span>
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Municipality Filters -->
+                        <div class="clean-filter-group municipality-filter-group">
+                            <h4 class="clean-filter-group-title">
+                                <i class="fas fa-building"></i>
+                                市町村
+                                <span class="filter-search-toggle" onclick="toggleMunicipalitySearch()" title="市町村検索">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </h4>
+                            
+                            <!-- 市町村検索フィールド -->
+                            <div class="municipality-search-wrapper" id="municipality-search-wrapper" style="display: none; margin-bottom: 1rem;">
+                                <input type="text" id="municipality-search-input" placeholder="市町村名で検索..." 
+                                       class="clean-filter-search-input" onkeyup="filterMunicipalities(this.value)">
+                                <button type="button" class="filter-search-clear" onclick="clearMunicipalitySearch()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="filter-sub-title">
+                                <i class="fas fa-info-circle"></i>
+                                都道府県を選択すると市町村が表示されます
+                                <span class="filter-hint">都道府県選択後に表示</span>
+                            </div>
+                            
+                            <!-- 市町村リスト -->
+                            <div class="clean-filter-list-container municipality-list" id="municipality-list-container" style="max-height: 280px;">
+                                <?php if (!empty($all_municipalities) && !is_wp_error($all_municipalities)): ?>
+                                    <?php 
+                                    $selected_municipalities = explode(',', $search_params['municipality']);
+                                    foreach ($all_municipalities as $municipality): 
+                                        $is_selected_muni = in_array($municipality->slug, $selected_municipalities);
+                                    ?>
+                                    <label class="clean-filter-option municipality-option" 
+                                           data-municipality-name="<?php echo esc_attr(strtolower($municipality->name)); ?>" 
+                                           title="<?php echo esc_attr($municipality->name); ?>">
+                                        <input type="checkbox" 
+                                               name="municipalities[]" 
+                                               value="<?php echo esc_attr($municipality->slug); ?>" 
+                                               class="clean-filter-checkbox municipality-checkbox"
+                                               <?php checked($is_selected_muni); ?>>
+                                        <span class="clean-filter-label"><?php echo esc_html($municipality->name); ?></span>
+                                        <?php if ($municipality->count > 0): ?>
+                                        <span class="clean-filter-count"><?php echo esc_html($municipality->count); ?></span>
+                                        <?php endif; ?>
+                                    </label>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="no-municipality-message">
+                                        都道府県を選択すると、該当する市町村が表示されます。
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
 
                         <!-- Category Filters (白黒スタイリッシュ - チェックボックス形式) -->
                         <?php if (!empty($all_categories) && !is_wp_error($all_categories)): ?>
@@ -2416,7 +2710,8 @@ $all_categories = get_terms([
         filters: {
             search: '<?php echo esc_js($search_params['search']); ?>',
             categories: <?php echo json_encode(array_filter(explode(',', $search_params['category']))); ?>,
-            // Prefecture and municipality filters removed
+            prefectures: <?php echo json_encode(array_filter(explode(',', $search_params['prefecture']))); ?>,
+            municipalities: <?php echo json_encode(array_filter(explode(',', $search_params['municipality']))); ?>,
             region: '<?php echo esc_js($search_params['region']); ?>',
             amount: '<?php echo esc_js($search_params['amount']); ?>',
             status: <?php echo json_encode(array_filter(explode(',', $search_params['status']))); ?>,
@@ -2530,7 +2825,19 @@ $all_categories = get_terms([
         // Pagination
         document.addEventListener('click', handlePaginationClick);
         
-        // Region and prefecture event listeners removed
+        // 都道府県フィルターのイベントリスナー
+        document.querySelectorAll('.prefecture-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                handleFilterChange();
+                // 都道府県選択変更時に市町村を更新
+                loadMunicipalitiesForSidebarFilter();
+            });
+        });
+        
+        // 市町村フィルターのイベントリスナー
+        document.querySelectorAll('.municipality-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', handleFilterChange);
+        });
         
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -2654,7 +2961,13 @@ $all_categories = get_terms([
             document.querySelectorAll('.category-checkbox:checked')
         ).map(cb => cb.value);
         
-        // Prefecture and municipality filter updates removed
+        state.filters.prefectures = Array.from(
+            document.querySelectorAll('.prefecture-checkbox:checked')
+        ).map(cb => cb.value);
+        
+        state.filters.municipalities = Array.from(
+            document.querySelectorAll('.municipality-checkbox:checked')
+        ).map(cb => cb.value);
         
         const featuredCheckbox = document.querySelector('.featured-checkbox:checked');
         state.filters.is_featured = featuredCheckbox ? '1' : '';
@@ -2669,6 +2982,8 @@ $all_categories = get_terms([
     function updateFilterCount() {
         const count = 
             state.filters.categories.length +
+            state.filters.prefectures.length +
+            state.filters.municipalities.length +
             (state.filters.amount ? 1 : 0) +
             state.filters.status.length +
             (state.filters.is_featured ? 1 : 0);
@@ -2777,13 +3092,13 @@ $all_categories = get_terms([
         state.filters = {
             search: '',
             categories: [],
+            prefectures: [],
+            municipalities: [],
             amount: '',
             status: [],
             is_featured: '',
             sort: state.filters.sort
         };
-        
-        // Region and municipality reset removed
     }
     
     /**
@@ -2845,7 +3160,8 @@ $all_categories = get_terms([
                     nonce: config.nonce,
                     search: state.filters.search,
                     categories: JSON.stringify(state.filters.categories),
-                    // Prefecture and municipality parameters removed
+                    prefectures: JSON.stringify(state.filters.prefectures),
+                    municipalities: JSON.stringify(state.filters.municipalities),
                     amount: state.filters.amount,
                     status: JSON.stringify(state.filters.status),
                     only_featured: state.filters.is_featured,
@@ -2871,7 +3187,8 @@ $all_categories = get_terms([
                 nonce: config.nonce,
                 search: state.filters.search,
                 categories: JSON.stringify(state.filters.categories),
-                // Prefecture parameter removed
+                prefectures: JSON.stringify(state.filters.prefectures),
+                municipalities: JSON.stringify(state.filters.municipalities)
             });
             showError();
         } finally {
@@ -3071,7 +3388,8 @@ $all_categories = get_terms([
         
         if (state.filters.search) params.set('s', state.filters.search);
         if (state.filters.categories.length) params.set('category', state.filters.categories.join(','));
-        // Prefecture, municipality, and region URL parameters removed
+        if (state.filters.prefectures.length) params.set('prefecture', state.filters.prefectures.join(','));
+        if (state.filters.municipalities.length) params.set('municipality', state.filters.municipalities.join(','));
         if (state.filters.amount) params.set('amount', state.filters.amount);
         if (state.filters.status.length) params.set('status', state.filters.status.join(','));
         if (state.filters.is_featured) params.set('featured', '1');
@@ -3332,12 +3650,16 @@ function togglePrefectureSearch() {
  */
 function applyTopFilters() {
     const category = document.getElementById('top-category-select').value;
+    const prefecture = document.getElementById('top-prefecture-select').value;
+    const municipality = document.getElementById('top-municipality-select').value;
     const amount = document.getElementById('top-amount-select').value;
     const status = document.getElementById('top-status-select').value;
     const featured = document.getElementById('top-featured-btn').classList.contains('active') ? '1' : '';
     
     const params = new URLSearchParams();
     if (category) params.set('category', category);
+    if (prefecture) params.set('prefecture', prefecture);
+    if (municipality) params.set('municipality', municipality);
     if (amount) params.set('amount', amount);
     if (status) params.set('status', status);
     if (featured) params.set('featured', '1');
@@ -3355,6 +3677,8 @@ function applyTopFilters() {
  */
 function clearTopFilters() {
     document.getElementById('top-category-select').value = '';
+    document.getElementById('top-prefecture-select').value = '';
+    document.getElementById('top-municipality-select').value = '';
     document.getElementById('top-amount-select').value = '';
     document.getElementById('top-status-select').value = '';
     document.getElementById('top-featured-btn').classList.remove('active');
@@ -3378,18 +3702,231 @@ function toggleFeaturedFilter() {
  */
 document.addEventListener('DOMContentLoaded', function() {
     // セレクトボックスの変更を監視
-    ['top-category-select', 'top-amount-select', 'top-status-select'].forEach(id => {
+    ['top-category-select', 'top-prefecture-select', 'top-municipality-select', 'top-amount-select', 'top-status-select'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', function() {
-                // 自動適用は行わず、手動適用ボタンのみ
+                // 都道府県が変更された場合、市町村を更新
+                if (id === 'top-prefecture-select') {
+                    loadMunicipalitiesForTopFilter(this.value);
+                }
                 console.log(`${id} changed to: ${this.value}`);
             });
         }
     });
 });
 
-// Municipality loading functions removed per user request
+// ============================================
+// 市町村データロード機能
+// ============================================
+
+/**
+ * 上部フィルター用：都道府県選択時の市町村ロード
+ */
+function loadMunicipalitiesForTopFilter(prefectureSlug) {
+    const municipalitySelect = document.getElementById('top-municipality-select');
+    if (!municipalitySelect) return;
+    
+    // ローディング状態にする
+    municipalitySelect.innerHTML = '<option value="">読み込み中...</option>';
+    municipalitySelect.disabled = true;
+    
+    if (!prefectureSlug) {
+        municipalitySelect.innerHTML = '<option value="">都道府県を選択してください</option>';
+        municipalitySelect.disabled = false;
+        return;
+    }
+    
+    // AJAXで市町村データを取得
+    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            action: 'gi_get_municipalities_for_prefecture',
+            nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
+            prefecture_slug: prefectureSlug
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let options = '<option value="">すべての市町村</option>';
+            data.data.municipalities.forEach(municipality => {
+                options += `<option value="${municipality.slug}">${municipality.name} (${municipality.count})</option>`;
+            });
+            municipalitySelect.innerHTML = options;
+        } else {
+            municipalitySelect.innerHTML = '<option value="">市町村データの取得に失敗しました</option>';
+        }
+    })
+    .catch(error => {
+        console.error('Municipality loading error:', error);
+        municipalitySelect.innerHTML = '<option value="">エラーが発生しました</option>';
+    })
+    .finally(() => {
+        municipalitySelect.disabled = false;
+    });
+}
+
+/**
+ * サイドバーフィルター用：都道府県選択時の市町村ロード
+ */
+function loadMunicipalitiesForSidebarFilter() {
+    const selectedPrefectures = Array.from(
+        document.querySelectorAll('.prefecture-checkbox:checked')
+    ).map(cb => cb.value);
+    
+    const municipalityContainer = document.getElementById('municipality-list-container');
+    if (!municipalityContainer) return;
+    
+    if (selectedPrefectures.length === 0) {
+        municipalityContainer.innerHTML = `
+            <div class="no-municipality-message">
+                都道府県を選択すると、該当する市町村が表示されます。
+            </div>
+        `;
+        return;
+    }
+    
+    // ローディング表示
+    municipalityContainer.innerHTML = `
+        <div class="loading-municipality-message">
+            <i class="fas fa-spinner fa-spin"></i>
+            市町村データを読み込み中...
+        </div>
+    `;
+    
+    // AJAXで市町村データを取得
+    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            action: 'gi_get_municipalities_for_prefectures',
+            nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
+            prefecture_slugs: JSON.stringify(selectedPrefectures)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = '';
+            const currentMunicipalities = Array.from(
+                document.querySelectorAll('.municipality-checkbox:checked')
+            ).map(cb => cb.value);
+            
+            data.data.municipalities.forEach(municipality => {
+                const isSelected = currentMunicipalities.includes(municipality.slug);
+                html += `
+                    <label class="clean-filter-option municipality-option" 
+                           data-municipality-name="${municipality.name.toLowerCase()}" 
+                           title="${municipality.name}">
+                        <input type="checkbox" 
+                               name="municipalities[]" 
+                               value="${municipality.slug}" 
+                               class="clean-filter-checkbox municipality-checkbox"
+                               ${isSelected ? 'checked' : ''}>
+                        <span class="clean-filter-label">${municipality.name}</span>
+                        <span class="clean-filter-count">${municipality.count}</span>
+                    </label>
+                `;
+            });
+            municipalityContainer.innerHTML = html;
+            
+            // イベントリスナーを再設定
+            municipalityContainer.querySelectorAll('.municipality-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleFilterChange);
+            });
+        } else {
+            municipalityContainer.innerHTML = `
+                <div class="no-municipality-message">
+                    市町村データの取得に失敗しました。
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Municipality loading error:', error);
+        municipalityContainer.innerHTML = `
+            <div class="no-municipality-message">
+                エラーが発生しました。
+            </div>
+        `;
+    });
+}
+
+/**
+ * 都道府県検索機能
+ */
+function togglePrefectureSearch() {
+    const wrapper = document.getElementById('prefecture-search-wrapper');
+    const input = document.getElementById('prefecture-search-input');
+    
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'flex';
+        input.focus();
+    } else {
+        wrapper.style.display = 'none';
+        input.value = '';
+        filterPrefectures('');
+    }
+}
+
+function filterPrefectures(searchTerm) {
+    const prefectures = document.querySelectorAll('.prefecture-option');
+    const term = searchTerm.toLowerCase().trim();
+    
+    prefectures.forEach(prefecture => {
+        const prefectureName = prefecture.dataset.prefectureName;
+        const isVisible = !term || prefectureName.includes(term);
+        prefecture.style.display = isVisible ? '' : 'none';
+    });
+}
+
+function clearPrefectureSearch() {
+    const input = document.getElementById('prefecture-search-input');
+    input.value = '';
+    filterPrefectures('');
+    input.focus();
+}
+
+/**
+ * 市町村検索機能
+ */
+function toggleMunicipalitySearch() {
+    const wrapper = document.getElementById('municipality-search-wrapper');
+    const input = document.getElementById('municipality-search-input');
+    
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'flex';
+        input.focus();
+    } else {
+        wrapper.style.display = 'none';
+        input.value = '';
+        filterMunicipalities('');
+    }
+}
+
+function filterMunicipalities(searchTerm) {
+    const municipalities = document.querySelectorAll('.municipality-option');
+    const term = searchTerm.toLowerCase().trim();
+    
+    municipalities.forEach(municipality => {
+        const municipalityName = municipality.dataset.municipalityName;
+        const isVisible = !term || municipalityName.includes(term);
+        municipality.style.display = isVisible ? '' : 'none';
+    });
+}
+
+function clearMunicipalitySearch() {
+    const input = document.getElementById('municipality-search-input');
+    input.value = '';
+    filterMunicipalities('');
+    input.focus();
+}
 
 // ============================================
 // 提案6: AI Filter Optimization
