@@ -850,9 +850,16 @@ $region_mapping = [
     
     .clean-grants-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: var(--space-6);
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-4);
         margin-bottom: var(--space-8);
+    }
+    
+    /* 3列グリッドのレスポンシブ対応 */
+    @media (max-width: 1200px) {
+        .clean-grants-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
     
     .clean-grants-list {
@@ -990,7 +997,8 @@ $region_mapping = [
         }
         
         .clean-grants-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
         }
     }
     
@@ -1034,6 +1042,7 @@ $region_mapping = [
         
         .clean-grants-grid {
             grid-template-columns: 1fr;
+            gap: var(--space-4);
         }
         
         /* Mobile Sidebar */
@@ -1392,6 +1401,175 @@ $region_mapping = [
         background: var(--gray-50);
     }
     
+    /* ===== 検索フィールド用スタイル ===== */
+    .clean-filter-search-input {
+        width: 100%;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        font-weight: 400;
+        background: var(--white);
+        transition: var(--transition);
+        padding-right: 2.5rem;
+    }
+    
+    .clean-filter-search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .category-search-wrapper,
+    .prefecture-search-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .filter-search-clear {
+        position: absolute;
+        right: 0.5rem;
+        background: none;
+        border: none;
+        color: var(--gray-500);
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 50%;
+        width: 1.5rem;
+        height: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        transition: var(--transition);
+    }
+    
+    .filter-search-clear:hover {
+        background: var(--gray-200);
+        color: var(--gray-700);
+    }
+    
+    .filter-search-toggle {
+        margin-left: auto;
+        cursor: pointer;
+        padding: 0.25rem;
+        color: var(--gray-600);
+        border-radius: 50%;
+        width: 1.5rem;
+        height: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        font-size: 0.75rem;
+    }
+    
+    .filter-search-toggle:hover {
+        background: var(--gray-200);
+        color: var(--primary);
+    }
+    
+    /* ===== カーセンサー風上部フィルターバー ===== */
+    .top-filter-bar {
+        background: var(--white);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        margin-bottom: var(--space-6);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .top-filter-title {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin-bottom: var(--space-3);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    
+    .top-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
+        align-items: start;
+    }
+    
+    .top-filter-column {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+    
+    .top-filter-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gray-700);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--space-1);
+    }
+    
+    .top-filter-select {
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        font-size: 0.875rem;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .top-filter-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .top-filter-buttons {
+        display: flex;
+        gap: var(--space-2);
+        margin-top: var(--space-3);
+    }
+    
+    .top-filter-btn {
+        padding: var(--space-2) var(--space-4);
+        background: var(--gray-100);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        color: var(--gray-700);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .top-filter-btn:hover {
+        background: var(--gray-200);
+        border-color: var(--gray-400);
+    }
+    
+    .top-filter-btn.active {
+        background: var(--primary);
+        color: var(--white);
+        border-color: var(--primary);
+    }
+    
+    .top-filter-apply-btn {
+        background: var(--primary);
+        color: var(--white);
+        border: 1px solid var(--primary);
+        font-weight: 600;
+    }
+    
+    .top-filter-apply-btn:hover {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
+    }
+    
     /* ===== カーセンサー風 地域階層フィルター ===== */
     .region-hierarchy-filter {
         background: var(--gray-50);
@@ -1553,6 +1731,13 @@ $region_mapping = [
     }
     
     /* レスポンシブ対応 */
+    @media (max-width: 1024px) {
+        .top-filter-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
+        }
+    }
+    
     @media (max-width: 768px) {
         .region-tabs-container {
             gap: var(--space-1);
@@ -1567,15 +1752,87 @@ $region_mapping = [
         .municipality-list {
             max-height: 150px;
         }
+        
+        .top-filter-bar {
+            padding: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+        
+        .top-filter-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-3);
+        }
+        
+        .top-filter-buttons {
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+        
+        .top-filter-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        /* 検索フィールドのモバイル最適化 */
+        .clean-filter-search-input {
+            font-size: 16px; /* iOS zoom 防止 */
+        }
+        
+        .filter-search-toggle {
+            padding: 0.5rem;
+            width: 2rem;
+            height: 2rem;
+        }
     }
     
-    /* ===== Font Awesome カテゴリチップ（白黒スタイリッシュデザイン） ===== */
+    @media (max-width: 480px) {
+        .top-filter-title {
+            font-size: 0.8125rem;
+        }
+        
+        .top-filter-select {
+            font-size: 0.8125rem;
+            padding: var(--space-2);
+        }
+        
+        .top-filter-btn {
+            font-size: 0.8125rem;
+            padding: var(--space-2) var(--space-3);
+        }
+    }
+    
+    /* ===== UX向上：ホバーアニメーション ===== */
+    .clean-filter-option:hover {
+        background: var(--gray-50);
+        transform: translateX(2px);
+    }
+    
+    .clean-filter-option input:checked + .clean-filter-label {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    /* アイコン付きフィルタータイトルのスタイル */
+    .clean-filter-group-title i {
+        color: var(--primary);
+        margin-right: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .filter-sub-title i {
+        color: var(--primary);
+        margin-right: 0.25rem;
+        font-size: 0.75rem;
+    }
+    
+    /* ===== 白黒スタイリッシュ：カテゴリフィルター ===== */
     .category-filter-group {
         background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
         border-radius: var(--radius-xl);
         padding: var(--space-5);
         margin-bottom: var(--space-6);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--gray-200);
     }
     
     .category-grid-container {
@@ -1943,6 +2200,77 @@ $region_mapping = [
     </div>
 </section>
 
+<!-- Top Filter Bar (カーセンサー風) -->
+<section class="clean-main-filters">
+    <div class="clean-container">
+        <div class="top-filter-bar">
+            <h3 class="top-filter-title">
+                <i class="fas fa-filter"></i>
+                詳細検索条件
+            </h3>
+            <div class="top-filter-grid">
+                <div class="top-filter-column">
+                    <label class="top-filter-label">地域</label>
+                    <select class="top-filter-select" id="top-region-select">
+                        <option value="">全国</option>
+                        <?php foreach ($region_mapping as $region_name => $prefectures): ?>
+                        <option value="<?php echo esc_attr($region_name); ?>" <?php selected($search_params['region'], $region_name); ?>>
+                            <?php echo esc_html($region_name); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="top-filter-column">
+                    <label class="top-filter-label">カテゴリ</label>
+                    <select class="top-filter-select" id="top-category-select">
+                        <option value="">すべてのカテゴリ</option>
+                        <?php if (!empty($all_categories) && !is_wp_error($all_categories)): ?>
+                            <?php foreach (array_slice($all_categories, 0, 10) as $category): ?>
+                            <option value="<?php echo esc_attr($category->slug); ?>" 
+                                    <?php selected(in_array($category->slug, explode(',', $search_params['category']))); ?>>
+                                <?php echo esc_html($category->name); ?> (<?php echo $category->count; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="top-filter-column">
+                    <label class="top-filter-label">助成金額</label>
+                    <select class="top-filter-select" id="top-amount-select">
+                        <option value="">金額指定なし</option>
+                        <option value="0-100" <?php selected($search_params['amount'], '0-100'); ?>>〜100万円</option>
+                        <option value="100-500" <?php selected($search_params['amount'], '100-500'); ?>>100〜500万円</option>
+                        <option value="500-1000" <?php selected($search_params['amount'], '500-1000'); ?>>500〜1000万円</option>
+                        <option value="1000-3000" <?php selected($search_params['amount'], '1000-3000'); ?>>1000〜3000万円</option>
+                        <option value="3000+" <?php selected($search_params['amount'], '3000+'); ?>>3000万円以上</option>
+                    </select>
+                </div>
+                <div class="top-filter-column">
+                    <label class="top-filter-label">募集状況</label>
+                    <select class="top-filter-select" id="top-status-select">
+                        <option value="">すべての状況</option>
+                        <option value="active" <?php selected($search_params['status'], 'active'); ?>>募集中</option>
+                        <option value="upcoming" <?php selected($search_params['status'], 'upcoming'); ?>>募集予定</option>
+                        <option value="closed" <?php selected($search_params['status'], 'closed'); ?>>募集終了</option>
+                    </select>
+                </div>
+            </div>
+            <div class="top-filter-buttons">
+                <button type="button" class="top-filter-btn top-filter-apply-btn" onclick="applyTopFilters()">
+                    <i class="fas fa-search"></i> この条件で検索
+                </button>
+                <button type="button" class="top-filter-btn" onclick="clearTopFilters()">
+                    <i class="fas fa-undo"></i> クリア
+                </button>
+                <button type="button" class="top-filter-btn <?php echo $search_params['is_featured'] === '1' ? 'active' : ''; ?>" 
+                        onclick="toggleFeaturedFilter()" id="top-featured-btn">
+                    <i class="fas fa-star"></i> おすすめのみ
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Main Content -->
 <section class="clean-main">
     <div class="clean-container">
@@ -1992,12 +2320,50 @@ $region_mapping = [
                             <!-- 都道府県選択（選択した地方に応じて表示） -->
                             <?php if (!empty($all_prefectures) && !is_wp_error($all_prefectures)): ?>
                             <div class="prefecture-selection-container">
-                                <h5 class="filter-sub-title">都道府県</h5>
+                                <h5 class="filter-sub-title">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    都道府県
+                                    <span class="filter-search-toggle" onclick="togglePrefectureSearch()" title="都道府県検索">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                </h5>
+                                
+                                <!-- 都道府県検索フィールド -->
+                                <div class="prefecture-search-wrapper" id="prefecture-search-wrapper" style="display: none; margin-bottom: 1rem;">
+                                    <input type="text" id="prefecture-search-input" placeholder="都道府県名で検索..." 
+                                           class="clean-filter-search-input" onkeyup="filterPrefectures(this.value)">
+                                    <button type="button" class="filter-search-clear" onclick="clearPrefectureSearch()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
                                 <div class="clean-filter-list-container prefecture-list">
                                     <?php 
+                                    // 都道府県を北海道から沖縄まで固定順序で並べる
+                                    $prefecture_order = [
+                                        '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+                                        '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+                                        '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+                                        '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+                                        '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+                                        '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+                                        '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+                                    ];
+                                    
+                                    // タームを名前でマップ化
+                                    $prefecture_map = [];
+                                    foreach ($all_prefectures as $pref) {
+                                        $prefecture_map[$pref->name] = $pref;
+                                    }
+                                    
                                     $selected_prefectures = array_filter(explode(',', $search_params['prefecture']));
-                                    foreach ($all_prefectures as $prefecture): 
+                                    
+                                    // 固定順序で表示
+                                    foreach ($prefecture_order as $pref_name): 
+                                        if (!isset($prefecture_map[$pref_name])) continue;
+                                        $prefecture = $prefecture_map[$pref_name];
                                         $is_selected = in_array($prefecture->slug, $selected_prefectures);
+                                        
                                         // 都道府県がどの地方に属するか判定
                                         $pref_region = '';
                                         foreach ($region_mapping as $region => $region_prefs) {
@@ -2007,7 +2373,10 @@ $region_mapping = [
                                             }
                                         }
                                     ?>
-                                    <label class="clean-filter-option prefecture-option" data-region="<?php echo esc_attr($pref_region); ?>" style="<?php echo !empty($search_params['region']) && $search_params['region'] !== $pref_region ? 'display:none;' : ''; ?>">
+                                    <label class="clean-filter-option prefecture-option" 
+                                           data-region="<?php echo esc_attr($pref_region); ?>" 
+                                           data-prefecture-name="<?php echo esc_attr(strtolower($prefecture->name)); ?>"
+                                           style="<?php echo !empty($search_params['region']) && $search_params['region'] !== $pref_region ? 'display:none;' : ''; ?>">
                                         <input type="checkbox" 
                                                name="prefectures[]" 
                                                value="<?php echo esc_attr($prefecture->slug); ?>" 
@@ -2059,13 +2428,27 @@ $region_mapping = [
                             <?php endif; ?>
                         </div>
 
-                        <!-- Category Filters (アイコンなし白黒デザイン) -->
+                        <!-- Category Filters (白黒スタイリッシュ - チェックボックス形式) -->
                         <?php if (!empty($all_categories) && !is_wp_error($all_categories)): ?>
                         <div class="clean-filter-group category-filter-group">
                             <h4 class="clean-filter-group-title">
+                                <i class="fas fa-tags" style="margin-right: 0.5rem;"></i>
                                 カテゴリ
+                                <span class="filter-search-toggle" onclick="toggleCategorySearch()" title="カテゴリ検索">
+                                    <i class="fas fa-search"></i>
+                                </span>
                             </h4>
-                            <div class="category-grid-container">
+                            
+                            <!-- カテゴリ検索フィールド -->
+                            <div class="category-search-wrapper" id="category-search-wrapper" style="display: none; margin-bottom: 1rem;">
+                                <input type="text" id="category-search-input" placeholder="カテゴリ名で検索..." 
+                                       class="clean-filter-search-input" onkeyup="filterCategories(this.value)">
+                                <button type="button" class="filter-search-clear" onclick="clearCategorySearch()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <!-- カテゴリリスト（チェックボックス形式） -->
+                            <div class="clean-filter-list-container" style="max-height: 250px;">
                                 <?php 
                                 $category_limit = 12;
                                 $selected_categories = explode(',', $search_params['category']);
@@ -2078,24 +2461,29 @@ $region_mapping = [
                                     $is_selected_cat = in_array($category->slug, $selected_categories);
                                     $is_hidden = !$show_all_cat_initially && $index >= $category_limit;
                                 ?>
-                                <label class="category-chip-fa <?php echo $is_selected_cat ? 'selected' : ''; ?> <?php echo $is_hidden ? 'clean-filter-more-item hidden' : ''; ?>" title="<?php echo esc_attr($category->name); ?>">
+                                <label class="clean-filter-option category-option <?php echo $is_hidden ? 'clean-filter-more-item hidden' : ''; ?>" 
+                                       data-category-name="<?php echo esc_attr(strtolower($category->name)); ?>" 
+                                       title="<?php echo esc_attr($category->name); ?>">
                                     <input type="checkbox" 
                                            name="categories[]" 
                                            value="<?php echo esc_attr($category->slug); ?>" 
                                            class="clean-filter-checkbox category-checkbox"
-                                           <?php checked($is_selected_cat); ?>
-                                           style="display: none;">
-                                    <span class="category-name"><?php echo esc_html($category->name); ?></span>
+                                           <?php checked($is_selected_cat); ?>>
+                                    <span class="clean-filter-label"><?php echo esc_html($category->name); ?></span>
                                     <?php if ($category->count > 0): ?>
-                                    <span class="category-count-badge"><?php echo esc_html($category->count); ?></span>
+                                    <span class="clean-filter-count"><?php echo esc_html($category->count); ?></span>
                                     <?php endif; ?>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
                             <?php if ($category_count > $category_limit): ?>
                             <button type="button" class="clean-filter-more-btn" data-target="category">
-                                <span class="show-more-text <?php echo $show_all_cat_initially ? 'hidden' : ''; ?>">さらに表示 (+<?php echo $category_count - $category_limit; ?>)</span>
-                                <span class="show-less-text <?php echo !$show_all_cat_initially ? 'hidden' : ''; ?>">表示を減らす</span>
+                                <span class="show-more-text <?php echo $show_all_cat_initially ? 'hidden' : ''; ?>">
+                                    <i class="fas fa-chevron-down"></i> さらに表示 (+<?php echo $category_count - $category_limit; ?>)
+                                </span>
+                                <span class="show-less-text <?php echo !$show_all_cat_initially ? 'hidden' : ''; ?>">
+                                    <i class="fas fa-chevron-up"></i> 表示を減らす
+                                </span>
                             </button>
                             <?php endif; ?>
                         </div>
@@ -3188,6 +3576,167 @@ $region_mapping = [
         init();
     }
 })();
+
+// ============================================
+// フィルター検索機能
+// ============================================
+
+/**
+ * カテゴリ検索のトグル
+ */
+function toggleCategorySearch() {
+    const wrapper = document.getElementById('category-search-wrapper');
+    const input = document.getElementById('category-search-input');
+    
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'flex';
+        input.focus();
+    } else {
+        wrapper.style.display = 'none';
+        input.value = '';
+        filterCategories('');
+    }
+}
+
+/**
+ * カテゴリフィルタリング
+ */
+function filterCategories(searchTerm) {
+    const categories = document.querySelectorAll('.category-option');
+    const term = searchTerm.toLowerCase().trim();
+    
+    categories.forEach(category => {
+        const categoryName = category.dataset.categoryName;
+        const isVisible = !term || categoryName.includes(term);
+        category.style.display = isVisible ? '' : 'none';
+    });
+}
+
+/**
+ * カテゴリ検索のクリア
+ */
+function clearCategorySearch() {
+    const input = document.getElementById('category-search-input');
+    input.value = '';
+    filterCategories('');
+    input.focus();
+}
+
+/**
+ * 都道府県検索のトグル
+ */
+function togglePrefectureSearch() {
+    const wrapper = document.getElementById('prefecture-search-wrapper');
+    const input = document.getElementById('prefecture-search-input');
+    
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'flex';
+        input.focus();
+    } else {
+        wrapper.style.display = 'none';
+        input.value = '';
+        filterPrefectures('');
+    }
+}
+
+/**
+ * 都道府県フィルタリング
+ */
+function filterPrefectures(searchTerm) {
+    const prefectures = document.querySelectorAll('.prefecture-option');
+    const term = searchTerm.toLowerCase().trim();
+    
+    prefectures.forEach(prefecture => {
+        const prefectureName = prefecture.dataset.prefectureName;
+        const isVisible = !term || prefectureName.includes(term);
+        const isRegionVisible = prefecture.style.display !== 'none' || !prefecture.dataset.region;
+        
+        if (isVisible && isRegionVisible) {
+            prefecture.style.display = '';
+        } else if (!isVisible) {
+            prefecture.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * 都道府県検索のクリア
+ */
+function clearPrefectureSearch() {
+    const input = document.getElementById('prefecture-search-input');
+    input.value = '';
+    filterPrefectures('');
+    input.focus();
+}
+
+// ============================================
+// 上部フィルターバー機能
+// ============================================
+
+/**
+ * 上部フィルターの適用
+ */
+function applyTopFilters() {
+    const region = document.getElementById('top-region-select').value;
+    const category = document.getElementById('top-category-select').value;
+    const amount = document.getElementById('top-amount-select').value;
+    const status = document.getElementById('top-status-select').value;
+    const featured = document.getElementById('top-featured-btn').classList.contains('active') ? '1' : '';
+    
+    const params = new URLSearchParams();
+    if (region) params.set('region', region);
+    if (category) params.set('category', category);
+    if (amount) params.set('amount', amount);
+    if (status) params.set('status', status);
+    if (featured) params.set('featured', '1');
+    
+    // 現在の検索語を保持
+    const currentSearch = document.getElementById('clean-search-input')?.value;
+    if (currentSearch) params.set('s', currentSearch);
+    
+    const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.location.href = newURL;
+}
+
+/**
+ * 上部フィルターのクリア
+ */
+function clearTopFilters() {
+    document.getElementById('top-region-select').value = '';
+    document.getElementById('top-category-select').value = '';
+    document.getElementById('top-amount-select').value = '';
+    document.getElementById('top-status-select').value = '';
+    document.getElementById('top-featured-btn').classList.remove('active');
+    
+    // 検索語も保持してリダイレクト
+    const currentSearch = document.getElementById('clean-search-input')?.value;
+    const newURL = window.location.pathname + (currentSearch ? '?s=' + encodeURIComponent(currentSearch) : '');
+    window.location.href = newURL;
+}
+
+/**
+ * おすすめフィルターのトグル
+ */
+function toggleFeaturedFilter() {
+    const btn = document.getElementById('top-featured-btn');
+    btn.classList.toggle('active');
+}
+
+/**
+ * 上部フィルターの変更を監視
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // セレクトボックスの変更を監視
+    ['top-region-select', 'top-category-select', 'top-amount-select', 'top-status-select'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', function() {
+                // 自動適用は行わず、手動適用ボタンのみ
+                console.log(`${id} changed to: ${this.value}`);
+            });
+        }
+    });
+});
 
 // ============================================
 // Municipality Loading Functions
