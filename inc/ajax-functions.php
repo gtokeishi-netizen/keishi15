@@ -1327,7 +1327,7 @@ function gi_ajax_get_municipalities_for_prefecture() {
             return;
         }
         
-        error_log("Prefecture found: {$prefecture_term->name} (ID: {$prefecture_term->term_id})")
+        error_log("Prefecture found: {$prefecture_term->name} (ID: {$prefecture_term->term_id})");
         
         // まず階層的関係で市町村を取得
         $municipalities_hierarchical = get_terms([
@@ -1413,46 +1413,46 @@ function gi_ajax_get_municipalities_for_prefecture() {
                 $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
                 
                 foreach ($standard_municipalities as $muni_name) {
-                $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
-                $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
-                
-                if (!$existing_term) {
-                    // 新しい市町村タームを作成
-                    $result = wp_insert_term(
-                        $muni_name,
-                        'grant_municipality',
-                        [
-                            'slug' => $muni_slug,
-                            'description' => $prefecture_term->name . '・' . $muni_name
-                        ]
-                    );
+                    $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
+                    $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
                     
-                    if (!is_wp_error($result)) {
-                        // 都道府県メタデータを追加
-                        add_term_meta($result['term_id'], 'prefecture_slug', $prefecture_slug);
-                        add_term_meta($result['term_id'], 'prefecture_name', $prefecture_term->name);
+                    if (!$existing_term) {
+                        // 新しい市町村タームを作成
+                        $result = wp_insert_term(
+                            $muni_name,
+                            'grant_municipality',
+                            [
+                                'slug' => $muni_slug,
+                                'description' => $prefecture_term->name . '・' . $muni_name
+                            ]
+                        );
+                        
+                        if (!is_wp_error($result)) {
+                            // 都道府県メタデータを追加
+                            add_term_meta($result['term_id'], 'prefecture_slug', $prefecture_slug);
+                            add_term_meta($result['term_id'], 'prefecture_name', $prefecture_term->name);
+                            
+                            $municipalities_data[] = [
+                                'id' => $result['term_id'],
+                                'name' => $muni_name,
+                                'slug' => $muni_slug,
+                                'count' => 0
+                            ];
+                        }
+                    } else {
+                        // 既存タームのメタデータを確認・更新
+                        if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                            add_term_meta($existing_term->term_id, 'prefecture_slug', $prefecture_slug);
+                            add_term_meta($existing_term->term_id, 'prefecture_name', $prefecture_term->name);
+                        }
                         
                         $municipalities_data[] = [
-                            'id' => $result['term_id'],
-                            'name' => $muni_name,
-                            'slug' => $muni_slug,
-                            'count' => 0
+                            'id' => $existing_term->term_id,
+                            'name' => $existing_term->name,
+                            'slug' => $existing_term->slug,
+                            'count' => $existing_term->count
                         ];
                     }
-                } else {
-                    // 既存タームのメタデータを確認・更新
-                    if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
-                        add_term_meta($existing_term->term_id, 'prefecture_slug', $prefecture_slug);
-                        add_term_meta($existing_term->term_id, 'prefecture_name', $prefecture_term->name);
-                    }
-                    
-                    $municipalities_data[] = [
-                        'id' => $existing_term->term_id,
-                        'name' => $existing_term->name,
-                        'slug' => $existing_term->slug,
-                        'count' => $existing_term->count
-                    ];
-                }
                 }
             } else {
                 // 3. 最後のフォールバック: 都道府県名のみを返す
@@ -1494,8 +1494,8 @@ function gi_ajax_get_municipalities_for_prefecture() {
             'message' => count($municipalities_data) . '件の市町村を取得しました',
             'debug' => WP_DEBUG ? [
                 'prefecture_found' => !empty($prefecture_term),
-                'hierarchical_count' => count($municipalities_hierarchical ?? []),
-                'meta_count' => count($municipalities_meta ?? []),
+                'hierarchical_count' => isset($municipalities_hierarchical) ? count($municipalities_hierarchical) : 0,
+                'meta_count' => isset($municipalities_meta) ? count($municipalities_meta) : 0,
                 'total_unique' => count($municipalities_data),
                 'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
             ] : null
