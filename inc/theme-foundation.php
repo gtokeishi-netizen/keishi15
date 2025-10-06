@@ -683,94 +683,9 @@ add_action('after_setup_theme', 'gi_init_all_municipalities', 15);
  */
 
 /**
- * 都道府県・市町村データのクリーンアップと最適化
+ * Note: gi_cleanup_and_optimize_location_data function is defined later in this file
+ * with enhanced error handling and comprehensive cleanup logic.
  */
-function gi_cleanup_and_optimize_location_data() {
-    global $wpdb;
-    
-    // 1. 重複する都道府県タームを削除
-    $prefecture_terms = get_terms([
-        'taxonomy' => 'grant_prefecture',
-        'hide_empty' => false,
-        'orderby' => 'name'
-    ]);
-    
-    $seen_prefectures = [];
-    $deleted_count = 0;
-    
-    foreach ($prefecture_terms as $term) {
-        $clean_name = trim($term->name);
-        if (isset($seen_prefectures[$clean_name])) {
-            // 重複削除（投稿数が少ない方を削除）
-            $existing_term = $seen_prefectures[$clean_name];
-            if ($term->count < $existing_term->count) {
-                wp_delete_term($term->term_id, 'grant_prefecture');
-                $deleted_count++;
-            } else {
-                wp_delete_term($existing_term->term_id, 'grant_prefecture');
-                $seen_prefectures[$clean_name] = $term;
-                $deleted_count++;
-            }
-        } else {
-            $seen_prefectures[$clean_name] = $term;
-        }
-    }
-    
-    // 2. 市町村データの重複削除と都道府県との紐づけ修正
-    $municipality_terms = get_terms([
-        'taxonomy' => 'grant_municipality',
-        'hide_empty' => false,
-        'orderby' => 'name'
-    ]);
-    
-    $seen_municipalities = [];
-    $updated_count = 0;
-    
-    foreach ($municipality_terms as $term) {
-        $clean_name = trim($term->name);
-        $key = $clean_name;
-        
-        // prefecture_slug メタデータから都道府県を特定
-        $prefecture_slug = get_term_meta($term->term_id, 'prefecture_slug', true);
-        if ($prefecture_slug) {
-            $key = $prefecture_slug . '_' . $clean_name;
-        }
-        
-        if (isset($seen_municipalities[$key])) {
-            // 重複削除
-            $existing_term = $seen_municipalities[$key];
-            if ($term->count < $existing_term->count) {
-                wp_delete_term($term->term_id, 'grant_municipality');
-                $deleted_count++;
-            } else {
-                wp_delete_term($existing_term->term_id, 'grant_municipality');
-                $seen_municipalities[$key] = $term;
-                $deleted_count++;
-            }
-        } else {
-            $seen_municipalities[$key] = $term;
-            
-            // prefecture_slug が未設定の場合、スラッグから推測して設定
-            if (empty($prefecture_slug)) {
-                $slug_parts = explode('-', $term->slug);
-                if (count($slug_parts) >= 2) {
-                    $potential_pref_slug = $slug_parts[0];
-                    $pref_term = get_term_by('slug', $potential_pref_slug, 'grant_prefecture');
-                    if ($pref_term) {
-                        update_term_meta($term->term_id, 'prefecture_slug', $potential_pref_slug);
-                        update_term_meta($term->term_id, 'prefecture_name', $pref_term->name);
-                        $updated_count++;
-                    }
-                }
-            }
-        }
-    }
-    
-    return [
-        'deleted_duplicates' => $deleted_count,
-        'updated_bindings' => $updated_count
-    ];
-}
 
 /**
  * 都道府県・市町村データの完全リセット
@@ -802,96 +717,9 @@ function gi_reset_location_data() {
 }
 
 /**
- * 強化された市町村初期化（重複防止・適切な紐づけ）
+ * Note: gi_enhanced_init_municipalities_for_prefecture function is defined later in this file
+ * with enhanced error handling and improved logic.
  */
-function gi_enhanced_init_municipalities_for_prefecture($prefecture_slug, $prefecture_name) {
-    $municipalities = gi_get_municipalities_by_prefecture($prefecture_slug);
-    
-    if (empty($municipalities)) {
-        return false;
-    }
-    
-    // 都道府県レベルの市町村ターム（重複チェック付き）
-    $prefecture_muni_term = get_term_by('name', $prefecture_name, 'grant_municipality');
-    if (!$prefecture_muni_term) {
-        $pref_result = wp_insert_term(
-            $prefecture_name,
-            'grant_municipality',
-            array(
-                'slug' => $prefecture_slug . '-prefecture-level',
-                'description' => $prefecture_name . 'レベルの助成金'
-            )
-        );
-        
-        if (!is_wp_error($pref_result)) {
-            $prefecture_muni_term_id = $pref_result['term_id'];
-            // メタデータを設定
-            add_term_meta($prefecture_muni_term_id, 'prefecture_slug', $prefecture_slug);
-            add_term_meta($prefecture_muni_term_id, 'prefecture_name', $prefecture_name);
-            add_term_meta($prefecture_muni_term_id, 'is_prefecture_level', '1');
-        }
-    } else {
-        $prefecture_muni_term_id = $prefecture_muni_term->term_id;
-        // メタデータが未設定の場合は設定
-        if (!get_term_meta($prefecture_muni_term_id, 'prefecture_slug', true)) {
-            update_term_meta($prefecture_muni_term_id, 'prefecture_slug', $prefecture_slug);
-            update_term_meta($prefecture_muni_term_id, 'prefecture_name', $prefecture_name);
-            update_term_meta($prefecture_muni_term_id, 'is_prefecture_level', '1');
-        }
-    }
-    
-    // 各市町村のタームを作成（重複チェック付き）
-    foreach ($municipalities as $municipality_name) {
-        $muni_slug = $prefecture_slug . '-' . sanitize_title($municipality_name);
-        
-        // 既存チェック（スラッグベース）
-        $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
-        
-        if (!$existing_term) {
-            // 名前ベースでも重複チェック
-            $existing_by_name = get_terms([
-                'taxonomy' => 'grant_municipality',
-                'name' => $municipality_name,
-                'meta_query' => [
-                    [
-                        'key' => 'prefecture_slug',
-                        'value' => $prefecture_slug,
-                        'compare' => '='
-                    ]
-                ],
-                'hide_empty' => false
-            ]);
-            
-            if (empty($existing_by_name)) {
-                $result = wp_insert_term(
-                    $municipality_name,
-                    'grant_municipality',
-                    array(
-                        'slug' => $muni_slug,
-                        'description' => $prefecture_name . '・' . $municipality_name,
-                        'parent' => $prefecture_muni_term_id
-                    )
-                );
-                
-                if (!is_wp_error($result)) {
-                    // 適切なメタデータを設定
-                    add_term_meta($result['term_id'], 'prefecture_slug', $prefecture_slug);
-                    add_term_meta($result['term_id'], 'prefecture_name', $prefecture_name);
-                    add_term_meta($result['term_id'], 'is_prefecture_level', '0');
-                }
-            }
-        } else {
-            // 既存タームのメタデータ更新
-            if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
-                update_term_meta($existing_term->term_id, 'prefecture_slug', $prefecture_slug);
-                update_term_meta($existing_term->term_id, 'prefecture_name', $prefecture_name);
-                update_term_meta($existing_term->term_id, 'is_prefecture_level', '0');
-            }
-        }
-    }
-    
-    return true;
-}
 
 /**
  * =============================================================================
