@@ -364,7 +364,93 @@ function gi_call_real_ai_api($question, $grant_info) {
     }
     
     // 助成金情報を整理してプロンプト作成
-    $grant_context = \"助成金情報:\\n\";\n    foreach ($grant_info as $key => $value) {\n        if (!empty($value)) {\n            $grant_context .= \"- {$key}: {$value}\\n\";\n        }\n    }\n    \n    $system_prompt = \"あなたは助成金に詳しい専門アドバイザーです。提供された助成金情報を基に、ユーザーの質問に正確で分かりやすく回答してください。\\n\\n{$grant_context}\";\n    \n    // OpenAI API呼び出し\n    $api_response = gi_call_openai_api($system_prompt, $question, $api_key);\n    \n    if ($api_response) {\n        return $api_response;\n    }\n    \n    // API呼び出し失敗時のフォールバック\n    return gi_generate_fallback_response($question, $grant_info);\n}\n\n/**\n * OpenAI API呼び出し\n */\nfunction gi_call_openai_api($system_prompt, $user_question, $api_key) {\n    $api_url = 'https://api.openai.com/v1/chat/completions';\n    \n    $data = [\n        'model' => 'gpt-3.5-turbo',\n        'messages' => [\n            ['role' => 'system', 'content' => $system_prompt],\n            ['role' => 'user', 'content' => $user_question]\n        ],\n        'max_tokens' => 500,\n        'temperature' => 0.7\n    ];\n    \n    $headers = [\n        'Authorization: Bearer ' . $api_key,\n        'Content-Type: application/json'\n    ];\n    \n    $ch = curl_init();\n    curl_setopt($ch, CURLOPT_URL, $api_url);\n    curl_setopt($ch, CURLOPT_POST, true);\n    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));\n    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);\n    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n    curl_setopt($ch, CURLOPT_TIMEOUT, 30);\n    \n    $response = curl_exec($ch);\n    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);\n    curl_close($ch);\n    \n    if ($http_code === 200 && $response) {\n        $decoded = json_decode($response, true);\n        if (isset($decoded['choices'][0]['message']['content'])) {\n            return trim($decoded['choices'][0]['message']['content']);\n        }\n    }\n    \n    return false;\n}\n\n/**\n * API呼び出し失敗時のフォールバック応答\n */\nfunction gi_generate_fallback_response($question, $grant_info) {\n    $response = \"この助成金について、以下の情報をお答えできます:\\n\\n\";\n    \n    // 基本的な情報を整理して返す\n    if (isset($grant_info['最大助成額'])) {\n        $response .= \"💰 最大助成額: {$grant_info['最大助成額']}\\n\";\n    }\n    if (isset($grant_info['申請期限'])) {\n        $response .= \"📅 申請期限: {$grant_info['申請期限']}\\n\";\n    }\n    if (isset($grant_info['対象者'])) {\n        $response .= \"👥 対象者: {$grant_info['対象者']}\\n\";\n    }\n    if (isset($grant_info['実施機関'])) {\n        $response .= \"🏢 実施機関: {$grant_info['実施機関']}\\n\";\n    }\n    \n    $response .= \"\\n詳しい内容については、実施機関にお問い合わせください。\";\n    \n    return $response;\n}"
+    $grant_context = "助成金情報:\n";
+    foreach ($grant_info as $key => $value) {
+        if (!empty($value)) {
+            $grant_context .= "- {$key}: {$value}\n";
+        }
+    }
+    
+    $system_prompt = "あなたは助成金に詳しい専門アドバイザーです。提供された助成金情報を基に、ユーザーの質問に正確で分かりやすく回答してください。\n\n{$grant_context}";
+    
+    // OpenAI API呼び出し
+    $api_response = gi_call_openai_api($system_prompt, $question, $api_key);
+    
+    if ($api_response) {
+        return $api_response;
+    }
+    
+    // API呼び出し失敗時のフォールバック
+    return gi_generate_fallback_response($question, $grant_info);
+}
+
+/**
+ * OpenAI API呼び出し
+ */
+function gi_call_openai_api($system_prompt, $user_question, $api_key) {
+    $api_url = 'https://api.openai.com/v1/chat/completions';
+    
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            ['role' => 'system', 'content' => $system_prompt],
+            ['role' => 'user', 'content' => $user_question]
+        ],
+        'max_tokens' => 500,
+        'temperature' => 0.7
+    ];
+    
+    $headers = [
+        'Authorization: Bearer ' . $api_key,
+        'Content-Type: application/json'
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $api_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200 && $response) {
+        $decoded = json_decode($response, true);
+        if (isset($decoded['choices'][0]['message']['content'])) {
+            return trim($decoded['choices'][0]['message']['content']);
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * API呼び出し失敗時のフォールバック応答
+ */
+function gi_generate_fallback_response($question, $grant_info) {
+    $response = "この助成金について、以下の情報をお答えできます:\n\n";
+    
+    // 基本的な情報を整理して返す
+    if (isset($grant_info['最大助成額'])) {
+        $response .= "💰 最大助成額: {$grant_info['最大助成額']}\n";
+    }
+    if (isset($grant_info['申請期限'])) {
+        $response .= "📅 申請期限: {$grant_info['申請期限']}\n";
+    }
+    if (isset($grant_info['対象者'])) {
+        $response .= "👥 対象者: {$grant_info['対象者']}\n";
+    }
+    if (isset($grant_info['実施機関'])) {
+        $response .= "🏢 実施機関: {$grant_info['実施機関']}\n";
+    }
+    
+    $response .= "\n詳しい内容については、実施機関にお問い合わせください。";
+    
+    return $response;
+}
 
 /**
  * Enhanced 音声入力処理
