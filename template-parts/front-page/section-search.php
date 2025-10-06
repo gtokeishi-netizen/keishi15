@@ -229,6 +229,32 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 
 
         </div>
+        
+        <!-- Mobile Navigation Tabs (Mobile Only) -->
+        <div class="mobile-nav-tabs">
+            <button class="nav-tab active" data-tab="chat">
+                <span class="nav-tab-icon">💬</span>
+                <span class="nav-tab-label">チャット</span>
+            </button>
+            <button class="nav-tab" data-tab="search">
+                <span class="nav-tab-icon">🔍</span>
+                <span class="nav-tab-label">検索</span>
+            </button>
+            <button class="nav-tab" data-tab="results">
+                <span class="nav-tab-icon">📋</span>
+                <span class="nav-tab-label">結果</span>
+            </button>
+            <button class="nav-tab" data-tab="favorites">
+                <span class="nav-tab-icon">⭐</span>
+                <span class="nav-tab-label">保存</span>
+            </button>
+        </div>
+        
+        <!-- Floating Results Button (Mobile Only) -->
+        <button class="results-fab" id="mobile-results-fab">
+            結果
+        </button>
+        
     </div>
 </section>
 
@@ -2608,6 +2634,80 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         font-size: 12px;
         padding: 8px 10px;
     }
+    
+    /* Mobile Navigation Tabs */
+    .mobile-nav-tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: #fff;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        z-index: 300;
+    }
+    
+    .nav-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 4px;
+        border: none;
+        background: none;
+        color: #666;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .nav-tab.active {
+        color: #000;
+        background: #f8f9fa;
+    }
+    
+    .nav-tab-icon {
+        font-size: 18px;
+    }
+    
+    .nav-tab-label {
+        font-weight: 500;
+    }
+    
+    /* Floating Action Button for Results */
+    .results-fab {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background: #000;
+        color: #fff;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 250;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: none;
+    }
+    
+    .results-fab.show {
+        display: flex;
+    }
+    
+    .results-fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    }
 }
 </style>
 
@@ -4624,9 +4724,91 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         }, 4000);
     }
     
+    // Mobile Interface Management
+    function initMobileInterface() {
+        const isMobile = window.innerWidth <= 640;
+        if (!isMobile) return;
+        
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const chatPanel = document.querySelector('.ai-assistant-panel');
+        const resultsPanel = document.querySelector('.search-results-panel');
+        const resultsFab = document.getElementById('mobile-results-fab');
+        const resultsTab = document.querySelector('.results-tab');
+        
+        // Mobile navigation functionality
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabType = this.dataset.tab;
+                
+                // Update active tab
+                navTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show/hide panels
+                switch(tabType) {
+                    case 'chat':
+                        if (chatPanel) chatPanel.style.display = 'flex';
+                        if (resultsPanel) resultsPanel.classList.remove('active');
+                        break;
+                    case 'results':
+                        if (resultsPanel) {
+                            resultsPanel.classList.add('active');
+                            resultsPanel.style.display = 'block';
+                        }
+                        break;
+                    case 'search':
+                        // Scroll to search bar
+                        const searchBar = document.querySelector('.ai-search-bar');
+                        if (searchBar) {
+                            searchBar.scrollIntoView({ behavior: 'smooth' });
+                            const searchInput = searchBar.querySelector('.search-input');
+                            if (searchInput) searchInput.focus();
+                        }
+                        break;
+                }
+            });
+        });
+        
+        // Results FAB functionality
+        if (resultsFab && resultsPanel) {
+            resultsFab.addEventListener('click', function() {
+                resultsPanel.classList.toggle('active');
+                
+                // Update results tab count
+                const resultsCount = document.querySelectorAll('.grant-card').length;
+                if (resultsTab) {
+                    const countEl = resultsTab.querySelector('.results-tab-count');
+                    if (countEl) countEl.textContent = resultsCount;
+                }
+            });
+        }
+        
+        // Auto-hide mobile elements on desktop resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 640) {
+                if (resultsPanel) resultsPanel.classList.remove('active');
+                if (chatPanel) chatPanel.style.display = '';
+            }
+        });
+        
+        // Show results FAB when there are search results
+        const observer = new MutationObserver(function(mutations) {
+            const hasResults = document.querySelectorAll('.grant-card').length > 0;
+            if (resultsFab) {
+                resultsFab.classList.toggle('show', hasResults);
+            }
+        });
+        
+        const resultsContainer = document.getElementById('results-container');
+        if (resultsContainer) {
+            observer.observe(resultsContainer, { childList: true, subtree: true });
+        }
+    }
+    
     // Initialize speaker buttons for AI messages
     document.addEventListener('DOMContentLoaded', function() {
         addSpeakerButtonToAIMessages();
+        initMobileInterface();
         
         // Check browser support
         const chatInput = document.getElementById('chat-input');
