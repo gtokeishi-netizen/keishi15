@@ -585,111 +585,158 @@ static $assets_loaded = false;
 ============================================ */
 .grant-ai-summary {
     position: relative;
-    padding: 1.5rem;
-    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
-    border: 3px solid var(--clean-gray-900);
-    border-radius: var(--clean-radius-xl);
-    margin-bottom: 1.75rem;
-    min-height: 140px;
-    max-height: none;
-    overflow-y: auto;
+    padding: 1.8rem;
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 30%, #ffffff 70%, #f0f9ff 100%);
+    border: 4px solid var(--clean-gray-900);
+    border-radius: var(--clean-radius-2xl);
+    margin-bottom: 2rem;
+    min-height: 160px;
+    max-height: 200px;
+    overflow: hidden;
     transition: var(--clean-transition-slow);
     box-shadow: 
-        0 8px 25px rgba(0, 0, 0, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8),
-        0 0 0 1px rgba(0, 0, 0, 0.05);
-    position: relative;
+        0 12px 35px rgba(0, 0, 0, 0.15),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9),
+        0 0 0 2px rgba(0, 0, 0, 0.08),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.05);
+    cursor: default;
+    z-index: 5;
 }
 
-/* トレーディングカード風ホバーエフェクト */
+/* トレーディングカード風ホバーエフェクト - スクロール機能付き */
 .grant-ai-summary:hover {
-    transform: translateY(-6px) scale(1.02) rotateX(2deg);
+    transform: translateY(-8px) scale(1.03) rotateX(3deg);
+    max-height: 250px;
+    overflow-y: auto;
     box-shadow: 
-        0 15px 35px rgba(0, 0, 0, 0.2),
-        0 5px 15px rgba(0, 0, 0, 0.1),
-        inset 0 2px 0 rgba(255, 255, 255, 0.9);
-    border-color: var(--clean-gray-800);
-    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 30%, #ffffff 100%);
+        0 20px 45px rgba(0, 0, 0, 0.25),
+        0 8px 20px rgba(0, 0, 0, 0.15),
+        inset 0 3px 0 rgba(255, 255, 255, 0.95),
+        0 0 0 3px rgba(0, 0, 0, 0.1);
+    border-color: var(--clean-gray-700);
+    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 25%, #ffffff 50%, #f8fafc 75%, #ffffff 100%);
+    z-index: 10;
 }
 
-/* 装飾的な境界線 */
+/* 装飾的な境界線 - トレーディングカード風 */
 .grant-ai-summary::before {
     content: '';
     position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: calc(var(--clean-radius-xl) - 8px);
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    border-radius: calc(var(--clean-radius-2xl) - 6px);
     pointer-events: none;
     z-index: 1;
 }
 
-/* トレーディングカード風ラベル */
+/* 装飾的なコーナーライン */
+.grant-ai-summary::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 20px;
+    height: 20px;
+    border-top: 3px solid var(--clean-gray-800);
+    border-right: 3px solid var(--clean-gray-800);
+    border-radius: 0 8px 0 0;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.6;
+}
+
+/* トレーディングカード風ラベル - 改良版 */
 .grant-ai-summary-label {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.6rem;
+    gap: 0.75rem;
     color: var(--clean-white);
-    background: linear-gradient(135deg, #000000 0%, #374151 100%);
-    font-size: 0.75rem;
+    background: linear-gradient(135deg, #000000 0%, #1f2937 50%, #374151 100%);
+    font-size: 0.8rem;
     font-weight: 900;
-    margin: -1.5rem -1.5rem 1rem -1.5rem;
-    padding: 0.75rem 1.5rem;
+    margin: -1.8rem -1.8rem 1.25rem -1.8rem;
+    padding: 0.9rem 1.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     position: relative;
-    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
-    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
-    z-index: 2;
+    border-bottom: 3px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 
+        inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+        0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 3;
+    border-radius: var(--clean-radius-2xl) var(--clean-radius-2xl) 0 0;
 }
 
 /* アイコン：白黒のブレインアイコン */
 .grant-ai-summary-label::before {
-    content: '⚡';
-    font-size: 1.1rem;
-    animation: pulse-brain 2s ease-in-out infinite;
-    filter: brightness(0) invert(1);
+    content: '🧠';
+    font-size: 1.2rem;
+    animation: pulse-brain 3s ease-in-out infinite;
+    filter: grayscale(1) brightness(0) invert(1);
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
 @keyframes pulse-brain {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    0%, 100% { 
+        transform: scale(1) rotate(0deg); 
+        opacity: 1;
+    }
+    33% { 
+        transform: scale(1.1) rotate(-2deg); 
+        opacity: 0.8;
+    }
+    66% { 
+        transform: scale(1.05) rotate(2deg); 
+        opacity: 0.9;
+    }
 }
 
-/* スクロール可能なAI要約テキスト */
+/* スクロール可能なAI要約テキスト - 改良版 */
 .grant-ai-summary-text {
     color: var(--clean-gray-900);
-    font-size: 0.95rem;
-    line-height: 1.65;
+    font-size: 1rem;
+    line-height: 1.7;
     margin: 0;
-    font-weight: 500;
-    max-height: 120px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
+    font-weight: 600;
+    max-height: 100px;
+    overflow-y: hidden;
+    padding-right: 0.75rem;
     position: relative;
     z-index: 2;
+    transition: var(--clean-transition);
 }
 
-/* カスタムスクロールバー */
+/* ホバー時にスクロール可能に */
+.grant-ai-summary:hover .grant-ai-summary-text {
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* カスタムスクロールバー - トレーディングカード風 */
 .grant-ai-summary-text::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
 }
 
 .grant-ai-summary-text::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 2px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.1));
+    border-radius: 3px;
+    margin: 4px 0;
 }
 
 .grant-ai-summary-text::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 2px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5));
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .grant-ai-summary-text::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.4);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
@@ -698,51 +745,83 @@ static $assets_loaded = false;
 .grant-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    padding: 0;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0;
+    position: relative;
 }
 
-/* トレーディングカード風情報アイテム */
+/* グリッドの装飾線 */
+.grant-info-grid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--clean-gray-400) 20%, var(--clean-gray-800) 50%, var(--clean-gray-400) 80%, transparent 100%);
+    border-radius: 1px;
+}
+
+/* トレーディングカード風情報アイテム - 改良版 */
 .grant-info-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 1.25rem 1rem;
-    background: linear-gradient(145deg, #ffffff 0%, #f9fafb 50%, #ffffff 100%);
-    border: 2px solid var(--clean-gray-900);
-    border-radius: var(--clean-radius-lg);
+    padding: 1.5rem 1.25rem;
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 30%, #ffffff 70%, #f5f8fa 100%);
+    border: 3px solid var(--clean-gray-900);
+    border-radius: var(--clean-radius-xl);
     transition: var(--clean-transition-slow);
     position: relative;
     overflow: hidden;
-    min-height: 90px;
+    min-height: 100px;
     text-align: center;
     box-shadow: 
-        0 4px 12px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        0 6px 18px rgba(0, 0, 0, 0.12),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    cursor: default;
 }
 
-/* トレーディングカード風ホバーエフェクト */
+/* トレーディングカード風ホバーエフェクト - 改良版 */
 .grant-info-item:hover {
-    transform: translateY(-4px) scale(1.03);
+    transform: translateY(-6px) scale(1.05) rotateY(2deg);
     box-shadow: 
-        0 8px 25px rgba(0, 0, 0, 0.15),
-        0 4px 10px rgba(0, 0, 0, 0.1),
-        inset 0 2px 0 rgba(255, 255, 255, 0.9);
-    border-color: var(--clean-gray-700);
-    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 50%, #ffffff 100%);
+        0 12px 32px rgba(0, 0, 0, 0.2),
+        0 6px 16px rgba(0, 0, 0, 0.12),
+        inset 0 3px 0 rgba(255, 255, 255, 0.95),
+        0 0 0 2px rgba(0, 0, 0, 0.08);
+    border-color: var(--clean-gray-600);
+    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 25%, #ffffff 50%, #f8fafc 75%, #ffffff 100%);
+    z-index: 3;
 }
 
-/* 装飾線 */
+/* 装飾線 - トレーディングカード風 */
 .grant-info-item::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 20%;
-    right: 20%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent 0%, var(--clean-gray-900) 50%, transparent 100%);
+    bottom: 8px;
+    left: 15%;
+    right: 15%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.1) 20%, var(--clean-gray-900) 50%, rgba(0, 0, 0, 0.1) 80%, transparent 100%);
+    border-radius: 1.5px;
+}
+
+/* コーナーの装飾 */
+.grant-info-item::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 16px;
+    height: 16px;
+    border-top: 2px solid rgba(0, 0, 0, 0.2);
+    border-left: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 4px 0 0 0;
+    pointer-events: none;
 }
 
 .grant-info-content {
@@ -753,46 +832,59 @@ static $assets_loaded = false;
     gap: 0.25rem;
 }
 
-/* トレーディングカード風ラベル */
+/* トレーディングカード風ラベル - 改良版 */
 .grant-info-label {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
-    font-size: 0.65rem;
-    font-weight: 800;
-    color: var(--clean-gray-700);
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: var(--clean-gray-800);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
     position: relative;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.1) 100%);
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--clean-radius-2xl);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* アイコン追加 */
+/* アイコン追加 - 白黒モノクローム */
 .grant-info-label[data-type="amount"]::before {
-    content: '💰';
-    font-size: 0.875rem;
-    filter: grayscale(1);
+    content: '●';
+    font-size: 0.8rem;
+    color: var(--clean-gray-800);
+    margin-right: 0.5rem;
+    display: inline-block;
 }
 
 .grant-info-label[data-type="region"]::before {
-    content: '📍';
-    font-size: 0.875rem;
-    filter: grayscale(1);
+    content: '▲';
+    font-size: 0.8rem;
+    color: var(--clean-gray-800);
+    margin-right: 0.5rem;
+    display: inline-block;
 }
 
-/* トレーディングカード風値表示 */
+/* トレーディングカード風値表示 - 改良版 */
 .grant-info-value {
     display: block;
-    font-size: 0.9rem;
-    font-weight: 800;
+    font-size: 1rem;
+    font-weight: 900;
     color: var(--clean-gray-900);
-    line-height: 1.2;
+    line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
     text-align: center;
     position: relative;
-    z-index: 1;
+    z-index: 2;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--clean-radius-md);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 /* アクションフッター - 改良版 */
@@ -959,6 +1051,23 @@ static $assets_loaded = false;
     display: none;
 }
 
+/* アイコンのモノクローム化 - 全体適用 */
+.grant-detail-label span,
+.grant-stat-label,
+.grant-hover-details .grant-detail-label span,
+.grant-quick-stats .grant-stat-label {
+    filter: grayscale(1) brightness(0) !important;
+    opacity: 0.8;
+}
+
+/* 特定のアイコンモノクローム化 */
+emoji,
+[role="img"],
+.emoji {
+    filter: grayscale(1) brightness(0) !important;
+    opacity: 0.9;
+}
+
 /* バッジの重複防止 - デスクトップ用改良 */
 .grant-badge-container {
     position: absolute;
@@ -1046,6 +1155,7 @@ static $assets_loaded = false;
 .grant-match-score i {
     font-size: 0.875rem;
     animation: pulse-brain 2s ease-in-out infinite;
+    filter: grayscale(1) brightness(0) invert(1);
 }
 
 @keyframes pulse-brain {
@@ -1546,10 +1656,17 @@ static $assets_loaded = false;
     }
     
     .grant-info-item {
-        min-height: 70px;
+        min-height: 80px;
         padding: 1rem;
         border-width: 3px;
         border-radius: var(--clean-radius-xl);
+        margin-bottom: 0.5rem;
+    }
+    
+    /* モバイルでの情報グリッドのギャップ調整 */
+    .grant-info-grid {
+        gap: 1rem;
+        margin-bottom: 1rem;
     }
     
     .grant-info-label {
@@ -1618,10 +1735,17 @@ static $assets_loaded = false;
     /* AI要約セクションの高さ調整 - モバイル最適化 */
     .grant-ai-summary {
         min-height: auto;
-        max-height: none;
+        max-height: 180px;
         padding: 1.25rem;
         border-width: 3px;
         margin-bottom: 1.25rem;
+        overflow-y: auto;
+    }
+    
+    /* モバイルではホバーではなくタップでスクロール可能に */
+    .grant-ai-summary:active {
+        max-height: 220px;
+        overflow-y: auto;
     }
     
     .grant-ai-summary-text {
@@ -1659,7 +1783,17 @@ static $assets_loaded = false;
     }
     
     .grant-info-value {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+    
+    /* モバイルでのトレーディングカード風エフェクト保持 */
+    .grant-info-item:active {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 
+            0 8px 20px rgba(0, 0, 0, 0.15),
+            0 4px 12px rgba(0, 0, 0, 0.1);
     }
     
     /* カテゴリータグ調整 */
@@ -1673,6 +1807,13 @@ static $assets_loaded = false;
     /* カードの最小高さ調整 */
     .grant-view-card .grant-card-unified {
         min-height: auto;
+        padding-bottom: 0;
+    }
+    
+    /* モバイルでのカードアニメーション */
+    .grant-card-unified:active {
+        transform: translateY(-2px) scale(0.98);
+        transition: transform 0.1s ease;
     }
     
     /* フッターボタンの改良 */
@@ -2677,13 +2818,13 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- 重要情報グリッド（AI要約重視レイアウト） -->
+            <!-- トレーディングカード風情報グリッド - 助成額と地域のみ -->
             <div class="grant-info-grid">
                 <!-- 助成金額 -->
                 <?php if ($amount_display): ?>
                 <div class="grant-info-item grant-info-item--amount">
                     <div class="grant-info-content">
-                        <span class="grant-info-label">💰 助成額</span>
+                        <span class="grant-info-label" data-type="amount">助成額</span>
                         <span class="grant-info-value"><?php echo esc_html($amount_display); ?></span>
                     </div>
                 </div>
@@ -2692,7 +2833,7 @@ document.head.appendChild(grantCardStyles);
                 <!-- 地域 -->
                 <div class="grant-info-item grant-info-item--location">
                     <div class="grant-info-content">
-                        <span class="grant-info-label">📍 対象地域</span>
+                        <span class="grant-info-label" data-type="region">地域</span>
                         <span class="grant-info-value"><?php echo esc_html($prefecture); ?></span>
                     </div>
                 </div>
@@ -2805,25 +2946,10 @@ document.head.appendChild(grantCardStyles);
                     <span class="grant-stat-value"><?php echo esc_html($prefecture); ?></span>
                     <span class="grant-stat-label">📍 対象地域</span>
                 </div>
-                <?php if ($grant_success_rate > 0): ?>
-                <div class="grant-stat-item">
-                    <span class="grant-stat-value"><?php echo esc_html($grant_success_rate); ?>%</span>
-                    <span class="grant-stat-label">📊 採択率</span>
-                </div>
-                <?php endif; ?>
+
             </div>
             
-            <!-- 対象者情報（ホバー時のみ表示） -->
-            <?php if ($grant_target): ?>
-            <div class="grant-detail-section">
-                <div class="grant-detail-label">
-                    <span>🎯 対象者・対象事業</span>
-                </div>
-                <div class="grant-detail-value">
-                    <?php echo esc_html($grant_target); ?>
-                </div>
-            </div>
-            <?php endif; ?>
+
             
             <div class="grant-detail-sections">
                 <?php if ($ai_summary): ?>
