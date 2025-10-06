@@ -588,6 +588,61 @@ function gi_sync_all_prefecture_to_municipality_once() {
 }
 
 /**
+ * 市町村データ初期化を強制実行する関数
+ */
+function gi_force_initialize_municipalities() {
+    // 既存のすべての市町村データを削除
+    $existing_municipalities = get_terms([
+        'taxonomy' => 'grant_municipality',
+        'hide_empty' => false,
+        'fields' => 'ids'
+    ]);
+    
+    if (!is_wp_error($existing_municipalities)) {
+        foreach ($existing_municipalities as $term_id) {
+            wp_delete_term($term_id, 'grant_municipality');
+        }
+    }
+    
+    // 市町村データを再初期化
+    if (function_exists('gi_initialize_all_municipalities')) {
+        return gi_initialize_all_municipalities();
+    }
+    
+    return ['success' => false, 'message' => 'gi_initialize_all_municipalities関数が見つかりません'];
+}
+
+/**
+ * 市町村データ強制初期化AJAXハンドラー
+ */
+add_action('wp_ajax_gi_force_initialize_municipalities', 'gi_ajax_force_initialize_municipalities');
+function gi_ajax_force_initialize_municipalities() {
+    if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'gi_municipality_init_nonce') && !current_user_can('manage_options')) {
+        wp_send_json_error(['message' => '権限が不足しています']);
+        return;
+    }
+    
+    try {
+        $result = gi_force_initialize_municipalities();
+        
+        if ($result['success']) {
+            wp_send_json_success([
+                'message' => '市町村データの強制初期化が完了しました',
+                'data' => $result
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => '初期化に失敗しました: ' . $result['message']
+            ]);
+        }
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => 'エラーが発生しました: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
  * 都道府県レベル助成金の市町村を一括修正するAJAX関数
  */
 add_action('wp_ajax_gi_bulk_fix_prefecture_municipalities', 'gi_ajax_bulk_fix_prefecture_municipalities');

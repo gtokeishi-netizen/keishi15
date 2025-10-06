@@ -3737,33 +3737,65 @@ function loadMunicipalitiesForTopFilter(prefectureSlug) {
         return;
     }
     
-    // AJAXで市町村データを取得
+    // AJAXで市町村データを取得（改善版）
+    console.log('Loading municipalities for prefecture:', prefectureSlug);
+    
+    const requestData = {
+        action: 'gi_get_municipalities_for_prefecture',
+        nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
+        prefecture_slug: prefectureSlug
+    };
+    
+    console.log('AJAX request data:', requestData);
+    
     fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-            action: 'gi_get_municipalities_for_prefecture',
-            nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
-            prefecture_slug: prefectureSlug
-        })
+        body: new URLSearchParams(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Municipality response data:', data);
+        
         if (data.success) {
+            const municipalities = data.data.municipalities || [];
+            console.log('Municipalities count:', municipalities.length);
+            
             let options = '<option value="">すべての市町村</option>';
-            data.data.municipalities.forEach(municipality => {
-                options += `<option value="${municipality.slug}">${municipality.name} (${municipality.count})</option>`;
+            municipalities.forEach(municipality => {
+                options += `<option value="${municipality.slug}">${municipality.name} (${municipality.count || 0})</option>`;
             });
             municipalitySelect.innerHTML = options;
+            
+            // デバッグ情報がある場合は表示
+            if (data.data.debug) {
+                console.log('Debug info:', data.data.debug);
+            }
         } else {
-            municipalitySelect.innerHTML = '<option value="">市町村データの取得に失敗しました</option>';
+            console.error('Municipality request failed:', data.data || data);
+            let errorMessage = '市町村データの取得に失敗しました';
+            if (data.data && data.data.message) {
+                errorMessage = data.data.message;
+            }
+            municipalitySelect.innerHTML = `<option value="">${errorMessage}</option>`;
+            
+            // デバッグ情報を表示
+            if (data.data && data.data.debug) {
+                console.error('Error debug info:', data.data.debug);
+            }
         }
     })
     .catch(error => {
         console.error('Municipality loading error:', error);
-        municipalitySelect.innerHTML = '<option value="">エラーが発生しました</option>';
+        municipalitySelect.innerHTML = '<option value="">ネットワークエラーが発生しました</option>';
     })
     .finally(() => {
         municipalitySelect.disabled = false;
@@ -3798,27 +3830,44 @@ function loadMunicipalitiesForSidebarFilter() {
         </div>
     `;
     
-    // AJAXで市町村データを取得
+    // AJAXで市町村データを取得（改善版）
+    console.log('Sidebar: Loading municipalities for prefectures:', selectedPrefectures);
+    
+    const requestData = {
+        action: 'gi_get_municipalities_for_prefectures',
+        nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
+        prefecture_slugs: JSON.stringify(selectedPrefectures)
+    };
+    
+    console.log('Sidebar AJAX request data:', requestData);
+    
     fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-            action: 'gi_get_municipalities_for_prefectures',
-            nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
-            prefecture_slugs: JSON.stringify(selectedPrefectures)
-        })
+        body: new URLSearchParams(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Sidebar response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Sidebar municipality response data:', data);
+        
         if (data.success) {
+            const municipalities = data.data.municipalities || [];
+            console.log('Sidebar municipalities loaded:', municipalities.length);
+            
             let html = '';
             const currentMunicipalities = Array.from(
                 document.querySelectorAll('.municipality-checkbox:checked')
             ).map(cb => cb.value);
             
-            data.data.municipalities.forEach(municipality => {
+            municipalities.forEach(municipality => {
                 const isSelected = currentMunicipalities.includes(municipality.slug);
                 html += `
                     <label class="clean-filter-option municipality-option" 
@@ -3830,29 +3879,53 @@ function loadMunicipalitiesForSidebarFilter() {
                                class="clean-filter-checkbox municipality-checkbox"
                                ${isSelected ? 'checked' : ''}>
                         <span class="clean-filter-label">${municipality.name}</span>
-                        <span class="clean-filter-count">${municipality.count}</span>
+                        <span class="clean-filter-count">${municipality.count || 0}</span>
                     </label>
                 `;
             });
-            municipalityContainer.innerHTML = html;
             
-            // イベントリスナーを再設定
-            municipalityContainer.querySelectorAll('.municipality-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', handleFilterChange);
-            });
+            if (municipalities.length > 0) {
+                municipalityContainer.innerHTML = html;
+                
+                // イベントリスナーを再設定
+                municipalityContainer.querySelectorAll('.municipality-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', handleFilterChange);
+                });
+            } else {
+                municipalityContainer.innerHTML = `
+                    <div class="no-municipality-message">
+                        選択された都道府県に対応する市町村が見つかりません。
+                    </div>
+                `;
+            }
+            
+            // デバッグ情報がある場合は表示
+            if (data.data.debug) {
+                console.log('Sidebar debug info:', data.data.debug);
+            }
         } else {
+            console.error('Sidebar municipality request failed:', data.data || data);
+            let errorMessage = '市町村データの取得に失敗しました';
+            if (data.data && data.data.message) {
+                errorMessage = data.data.message;
+            }
             municipalityContainer.innerHTML = `
                 <div class="no-municipality-message">
-                    市町村データの取得に失敗しました。
+                    ${errorMessage}
                 </div>
             `;
+            
+            // デバッグ情報を表示
+            if (data.data && data.data.debug) {
+                console.error('Sidebar error debug info:', data.data.debug);
+            }
         }
     })
     .catch(error => {
-        console.error('Municipality loading error:', error);
+        console.error('Sidebar municipality loading error:', error);
         municipalityContainer.innerHTML = `
             <div class="no-municipality-message">
-                エラーが発生しました。
+                ネットワークエラーが発生しました。ページを再読み込みしてください。
             </div>
         `;
     });
