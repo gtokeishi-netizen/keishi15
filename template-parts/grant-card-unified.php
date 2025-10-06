@@ -897,8 +897,9 @@ static $assets_loaded = false;
     justify-content: space-between;
     gap: 0.75rem;
     position: relative;
-    z-index: 10;
+    z-index: 50;
     margin-top: auto;
+    pointer-events: auto;
 }
 
 .grant-actions {
@@ -925,10 +926,11 @@ static $assets_loaded = false;
     white-space: nowrap;
     position: relative;
     overflow: hidden;
-    z-index: 20;
+    z-index: 100;
     flex: 1;
     min-width: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
 }
 
 /* 詳細ボタン - 改良版 */
@@ -1265,7 +1267,7 @@ emoji,
     75% { transform: translateX(2px); }
 }
 
-/* ホバー時の詳細表示 - 改良版 */
+/* ホバー時の詳細表示 - 改良版（ボタンクリック問題修正） */
 .grant-hover-details {
     position: absolute;
     top: 0;
@@ -1279,7 +1281,7 @@ emoji,
     visibility: hidden;
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     overflow: hidden;
-    z-index: 15;
+    z-index: 5;
     border-radius: var(--clean-radius-xl);
     display: flex;
     flex-direction: column;
@@ -1293,6 +1295,32 @@ emoji,
     visibility: visible;
     pointer-events: auto;
     transform: scale(1.02);
+}
+
+/* フッターボタンがクリック可能になるよう、ホバー時にz-indexを高くする */
+.grant-card-unified:hover .grant-card-footer {
+    position: relative;
+    z-index: 20;
+    pointer-events: auto;
+}
+
+/* ボタンを確実にクリック可能にする */
+.grant-card-footer .grant-btn {
+    position: relative;
+    z-index: 25;
+    pointer-events: auto;
+}
+
+/* ホバー詳細が表示されている時でもボタンがクリック可能 */
+.grant-hover-details.show-details ~ .grant-card-footer,
+.grant-card-unified:hover .grant-card-footer {
+    z-index: 30;
+}
+
+.grant-hover-details.show-details ~ .grant-card-footer .grant-btn,
+.grant-card-unified:hover .grant-card-footer .grant-btn {
+    z-index: 35;
+    pointer-events: auto;
 }
 
 /* スクロール可能なコンテンツエリア - 改良版 */
@@ -3033,6 +3061,9 @@ if (!$ai_features_js_loaded):
 // AI機能JavaScript（モノクローム対応）
 // ============================================================================
 
+// AJAX URL設定
+const ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
 // グローバル比較リスト
 window.compareList = window.compareList || [];
 
@@ -3309,6 +3340,8 @@ function showToast(message, type = 'success') {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background: var(--clean-white);
+    border-radius: 1rem 1rem 0 0;
 }
 
 .ai-modal-header h3 {
@@ -3318,6 +3351,7 @@ function showToast(message, type = 'success') {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--clean-gray-900);
 }
 
 .ai-modal-close {
@@ -3331,39 +3365,304 @@ function showToast(message, type = 'success') {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
+    color: var(--clean-gray-900);
 }
 
 .ai-modal-close:hover {
     background: #000;
     color: #fff;
+    transform: scale(1.05);
 }
 
 .ai-modal-body {
     padding: 1.5rem;
     overflow-y: auto;
+    flex: 1;
+    background: var(--clean-white);
 }
 
-/* Checklist */
+/* AI Checklist Styles */
 .ai-grant-title {
     font-weight: 600;
     margin-bottom: 1rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 2px solid var(--clean-gray-200);
+    color: var(--clean-gray-900);
+}
+
+.ai-checklist-loading {
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.125rem;
+    color: var(--clean-gray-600);
+}
+
+.ai-checklist-loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--clean-gray-300);
+    border-radius: 50%;
+    border-top-color: var(--clean-gray-900);
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 .ai-checklist-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
-    padding: 0.875rem;
-    border: 2px solid #e5e5e5;
-    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 2px solid var(--clean-gray-200);
+    border-radius: 0.75rem;
     margin-bottom: 0.75rem;
     cursor: pointer;
     transition: all 0.3s;
+    background: var(--clean-white);
 }
 
 .ai-checklist-item:hover {
+    border-color: var(--clean-gray-400);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.ai-checklist-item[data-priority="high"] {
+    border-left: 4px solid #dc2626;
+}
+
+.ai-checklist-item[data-priority="medium"] {
+    border-left: 4px solid #f59e0b;
+}
+
+.ai-checklist-item input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--clean-gray-900);
+}
+
+.ai-check-mark {
+    display: none;
+}
+
+.ai-check-text {
+    flex: 1;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--clean-gray-800);
+}
+
+.ai-check-priority {
+    padding: 0.25rem 0.5rem;
+    background: #dc2626;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+}
+
+/* AI Compare Styles */
+.ai-compare-loading {
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.125rem;
+    color: var(--clean-gray-600);
+}
+
+.ai-compare-loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--clean-gray-300);
+    border-radius: 50%;
+    border-top-color: var(--clean-gray-900);
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 0.5rem;
+}
+
+.ai-recommend-box {
+    background: linear-gradient(135deg, var(--clean-gray-900) 0%, var(--clean-gray-700) 100%);
+    color: white;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.recommend-score {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 0.75rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.ai-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    border: 2px solid var(--clean-gray-900);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.ai-compare-table th,
+.ai-compare-table td {
+    padding: 0.875rem;
+    text-align: left;
+    border-bottom: 1px solid var(--clean-gray-200);
+    font-size: 0.9375rem;
+}
+
+.ai-compare-table th {
+    background: var(--clean-gray-900);
+    color: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.ai-compare-table td {
+    background: var(--clean-white);
+}
+
+.ai-compare-table tr:nth-child(even) td {
+    background: var(--clean-gray-50);
+}
+
+.ai-compare-table tr:hover td {
+    background: var(--clean-gray-100);
+}
+
+/* Floating Compare Button */
+.ai-floating-compare-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--clean-gradient-primary);
+    color: white;
+    border: none;
+    padding: 1rem 1.5rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1000;
+    transition: all 0.3s;
+    animation: bounce 2s infinite;
+}
+
+.ai-floating-compare-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-5px);
+    }
+    60% {
+        transform: translateY(-3px);
+    }
+}
+
+/* Toast Notifications */
+.ai-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    background: var(--clean-gray-900);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    z-index: 10001;
+    transition: transform 0.3s ease;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.ai-toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.ai-toast-success {
+    background: #16a34a;
+}
+
+.ai-toast-warning {
+    background: #f59e0b;
+}
+
+.ai-toast-error {
+    background: #dc2626;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .ai-modal-content {
+        width: 95%;
+        max-height: 90vh;
+        margin: 1rem;
+    }
+    
+    .ai-modal-header {
+        padding: 1rem;
+    }
+    
+    .ai-modal-header h3 {
+        font-size: 1.125rem;
+    }
+    
+    .ai-modal-body {
+        padding: 1rem;
+    }
+    
+    .ai-checklist-item {
+        padding: 0.75rem;
+    }
+    
+    .ai-compare-table th,
+    .ai-compare-table td {
+        padding: 0.5rem;
+        font-size: 0.8125rem;
+    }
+    
+    .ai-floating-compare-btn {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.875rem 1.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .ai-toast {
+        bottom: 1rem;
+        font-size: 0.875rem;
+        padding: 0.875rem 1.25rem;
+    }
+}
+
+/* Duplicate content removed - already added above */
     border-color: #000;
     background: #fafafa;
 }
