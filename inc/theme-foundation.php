@@ -1470,6 +1470,90 @@ function gi_optimization_admin_page() {
                 </p>
             </form>
         </div>
+        
+        <div class="card">
+            <h2>🔧 都道府県レベル助成金の市町村自動設定</h2>
+            <p>都道府県レベルの助成金で市町村が正しく設定されていない場合の一括修正機能です。</p>
+            <div class="notice notice-info" style="margin: 15px 0;">
+                <p><strong>📍 都道府県レベル助成金とは：</strong></p>
+                <ul>
+                    <li>地域制限が「都道府県のみ」「全国」または未設定の助成金</li>
+                    <li>都道府県全域が対象で、市町村は自動で設定されます</li>
+                    <li>例：「東京都-prefecture-level」という市町村タームが自動作成されます</li>
+                </ul>
+            </div>
+            
+            <div id="prefecture-fix-result" style="display: none; margin: 15px 0;"></div>
+            
+            <p>
+                <button type="button" id="fix-prefecture-municipalities" class="button button-primary" style="background: #e67e22; border-color: #d35400;">
+                    🔧 都道府県レベル助成金の市町村を一括修正
+                </button>
+                <span class="spinner" id="fix-spinner" style="float: none; margin-left: 10px;"></span>
+            </p>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                $('#fix-prefecture-municipalities').on('click', function() {
+                    if (!confirm('都道府県レベル助成金の市町村設定を一括で修正します。\n\n処理には時間がかかる場合があります。実行しますか？')) {
+                        return;
+                    }
+                    
+                    var $button = $(this);
+                    var $spinner = $('#fix-spinner');
+                    var $result = $('#prefecture-fix-result');
+                    
+                    $button.prop('disabled', true);
+                    $spinner.addClass('is-active');
+                    $result.hide();
+                    
+                    $.post(ajaxurl, {
+                        action: 'gi_bulk_fix_prefecture_municipalities',
+                        _wpnonce: '<?php echo wp_create_nonce("gi_bulk_fix_nonce"); ?>'
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            $result.html(
+                                '<div class="notice notice-success"><p>' +
+                                '<strong>✅ 修正完了:</strong> ' + response.data.message + '<br>' +
+                                (response.data.initialization.success ? 
+                                    '<small>初期化: 作成 ' + response.data.initialization.total_created + ' 件, 更新 ' + response.data.initialization.total_updated + ' 件</small>' : 
+                                    '<small>⚠️ 初期化でエラーが発生しました</small>') +
+                                '</p></div>'
+                            ).show();
+                            
+                            // 詳細があれば表示
+                            if (response.data.details && response.data.details.length > 0) {
+                                var details = '<div class="notice notice-info"><p><strong>修正詳細 (最初の10件):</strong></p><ul>';
+                                response.data.details.forEach(function(detail) {
+                                    details += '<li>' + detail + '</li>';
+                                });
+                                details += '</ul></div>';
+                                $result.append(details);
+                            }
+                        } else {
+                            $result.html(
+                                '<div class="notice notice-error"><p>' +
+                                '<strong>❌ エラー:</strong> ' + response.data.message +
+                                '</p></div>'
+                            ).show();
+                        }
+                    })
+                    .fail(function() {
+                        $result.html(
+                            '<div class="notice notice-error"><p>' +
+                            '<strong>❌ エラー:</strong> 通信エラーが発生しました' +
+                            '</p></div>'
+                        ).show();
+                    })
+                    .always(function() {
+                        $button.prop('disabled', false);
+                        $spinner.removeClass('is-active');
+                    });
+                });
+            });
+            </script>
+        </div>
     </div>
     <?php
 }

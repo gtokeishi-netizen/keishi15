@@ -476,7 +476,8 @@ function gi_sync_prefecture_to_municipality($post_id, $post, $update) {
         foreach ($prefectures as $prefecture) {
             if ($regional_limitation === 'prefecture_only' || empty($regional_limitation) || $regional_limitation === 'nationwide') {
                 // 都道府県レベルの助成金：都道府県名の市町村タームを自動設定
-                $pref_muni_term = get_term_by('name', $prefecture->name, 'grant_municipality');
+                $pref_level_slug = $prefecture->slug . '-prefecture-level';
+                $pref_muni_term = get_term_by('slug', $pref_level_slug, 'grant_municipality');
                 
                 if (!$pref_muni_term) {
                     // 都道府県レベルの市町村タームを作成
@@ -484,16 +485,26 @@ function gi_sync_prefecture_to_municipality($post_id, $post, $update) {
                         $prefecture->name,
                         'grant_municipality',
                         [
-                            'slug' => $prefecture->slug . '-prefecture-level',
-                            'description' => $prefecture->name . 'レベルの助成金'
+                            'slug' => $pref_level_slug,
+                            'description' => $prefecture->name . '全域対象の助成金'
                         ]
                     );
                     
                     if (!is_wp_error($result)) {
                         $municipality_term_ids[] = $result['term_id'];
+                        // メタデータを設定
+                        add_term_meta($result['term_id'], 'prefecture_slug', $prefecture->slug);
+                        add_term_meta($result['term_id'], 'prefecture_name', $prefecture->name);
+                        add_term_meta($result['term_id'], 'is_prefecture_level', '1');
                     }
                 } else {
                     $municipality_term_ids[] = $pref_muni_term->term_id;
+                    // メタデータがなければ設定
+                    if (!get_term_meta($pref_muni_term->term_id, 'prefecture_slug', true)) {
+                        add_term_meta($pref_muni_term->term_id, 'prefecture_slug', $prefecture->slug);
+                        add_term_meta($pref_muni_term->term_id, 'prefecture_name', $prefecture->name);
+                        add_term_meta($pref_muni_term->term_id, 'is_prefecture_level', '1');
+                    }
                 }
                 
                 // この都道府県の市町村データが未初期化なら初期化
@@ -573,5 +584,126 @@ function gi_sync_all_prefecture_to_municipality_once() {
         
         // 完了フラグを保存
         update_option('gi_prefecture_municipality_sync_done', true);
+    }
+}
+
+/**
+ * 都道府県レベル助成金の市町村を一括修正するAJAX関数
+ */
+add_action('wp_ajax_gi_bulk_fix_prefecture_municipalities', 'gi_ajax_bulk_fix_prefecture_municipalities');
+function gi_ajax_bulk_fix_prefecture_municipalities() {
+    // 管理者権限チェック
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => '権限が不足しています']);
+        return;
+    }
+    
+    try {
+        // 1. 都道府県・市町村データの初期化
+        if (function_exists('gi_initialize_all_municipalities')) {
+            $init_result = gi_initialize_all_municipalities();
+        } else {
+            $init_result = ['success' => false, 'message' => '初期化関数が見つかりません'];
+        }
+        
+        // 2. 都道府県レベル助成金を取得
+        $grants_query = new WP_Query([
+            'post_type' => 'grant',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                [
+                    'key' => 'regional_limitation',
+                    'value' => ['prefecture_only', 'nationwide', ''],
+                    'compare' => 'IN'
+                ]
+            ]
+        ]);
+        
+        $fixed_count = 0;
+        $error_count = 0;
+        $details = [];
+        
+        if ($grants_query->have_posts()) {
+            while ($grants_query->have_posts()) {
+                $grants_query->the_post();
+                $post_id = get_the_ID();
+                $post_title = get_the_title();
+                
+                // 都道府県を取得
+                $prefectures = wp_get_post_terms($post_id, 'grant_prefecture');
+                if (!empty($prefectures) && !is_wp_error($prefectures)) {
+                    $municipality_term_ids = [];
+                    
+                    foreach ($prefectures as $prefecture) {
+                        // 都道府県レベルの市町村タームを取得または作成
+                        $pref_level_slug = $prefecture->slug . '-prefecture-level';
+                        $pref_muni_term = get_term_by('slug', $pref_level_slug, 'grant_municipality');
+                        
+                        if (!$pref_muni_term) {
+                            // 都道府県レベルの市町村タームを作成
+                            $result = wp_insert_term(
+                                $prefecture->name,
+                                'grant_municipality',
+                                [
+                                    'slug' => $pref_level_slug,
+                                    'description' => $prefecture->name . '全域対象の助成金'
+                                ]
+                            );
+                            
+                            if (!is_wp_error($result)) {
+                                $municipality_term_ids[] = $result['term_id'];
+                                // メタデータ設定
+                                add_term_meta($result['term_id'], 'prefecture_slug', $prefecture->slug);
+                                add_term_meta($result['term_id'], 'prefecture_name', $prefecture->name);
+                                add_term_meta($result['term_id'], 'is_prefecture_level', '1');
+                            }
+                        } else {
+                            $municipality_term_ids[] = $pref_muni_term->term_id;
+                            // メタデータがなければ追加
+                            if (!get_term_meta($pref_muni_term->term_id, 'prefecture_slug', true)) {
+                                add_term_meta($pref_muni_term->term_id, 'prefecture_slug', $prefecture->slug);
+                                add_term_meta($pref_muni_term->term_id, 'prefecture_name', $prefecture->name);
+                                add_term_meta($pref_muni_term->term_id, 'is_prefecture_level', '1');
+                            }
+                        }
+                    }
+                    
+                    // 市町村を設定
+                    if (!empty($municipality_term_ids)) {
+                        $existing_munis = wp_get_post_terms($post_id, 'grant_municipality', ['fields' => 'ids']);
+                        if (!is_wp_error($existing_munis)) {
+                            $all_muni_ids = array_unique(array_merge($existing_munis, $municipality_term_ids));
+                            wp_set_post_terms($post_id, $all_muni_ids, 'grant_municipality', false);
+                            $fixed_count++;
+                            $details[] = "✅ {$post_title} - 市町村設定完了";
+                        } else {
+                            wp_set_post_terms($post_id, $municipality_term_ids, 'grant_municipality', false);
+                            $fixed_count++;
+                            $details[] = "✅ {$post_title} - 市町村新規設定";
+                        }
+                    } else {
+                        $error_count++;
+                        $details[] = "❌ {$post_title} - 市町村タームの作成に失敗";
+                    }
+                } else {
+                    $error_count++;
+                    $details[] = "❌ {$post_title} - 都道府県タームが見つかりません";
+                }
+            }
+            wp_reset_postdata();
+        }
+        
+        wp_send_json_success([
+            'message' => "一括修正完了: 修正 {$fixed_count} 件, エラー {$error_count} 件",
+            'fixed_count' => $fixed_count,
+            'error_count' => $error_count,
+            'initialization' => $init_result,
+            'details' => array_slice($details, 0, 10) // 最初の10件のみ
+        ]);
+        
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => '一括修正中にエラーが発生しました: ' . $e->getMessage()
+        ]);
     }
 }
