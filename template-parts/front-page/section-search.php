@@ -60,10 +60,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                         autocomplete="off">
                     <div class="search-actions">
                         <button class="voice-btn" aria-label="音声入力">
-                            音声
+                            <span class="voice-icon" style="filter: grayscale(1) brightness(0);">🎤</span>
                         </button>
                         <button id="ai-search-btn" class="search-btn">
                             <span class="btn-text">検索</span>
+                            <span class="search-icon" style="filter: grayscale(1) brightness(0); margin-left: 8px;">🔍</span>
                         </button>
                     </div>
                 </div>
@@ -130,7 +131,10 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                             class="chat-input"
                             placeholder="質問を入力してください"
                             rows="1"></textarea>
-                        <button id="chat-send" class="chat-send-btn">送信</button>
+                        <button id="chat-send" class="chat-send-btn">
+                            <span>送信</span>
+                            <span style="filter: grayscale(1) brightness(0); margin-left: 6px;">📤</span>
+                        </button>
                     </div>
 
                     <!-- Quick Questions -->
@@ -232,10 +236,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 /* Monochrome AI Search Section Styles */
 .monochrome-ai-search {
     position: relative;
-    padding: 120px 0;
+    padding: 120px 0 160px 0;
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     font-family: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
     overflow: hidden;
+    min-height: 100vh;
 }
 
 /* 背景エフェクト（カテゴリーセクションと統一） */
@@ -477,33 +482,47 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 }
 
 .voice-btn {
-    width: 44px;
-    height: 44px;
-    border: none;
-    background: transparent;
-    color: #666;
+    width: 48px;
+    height: 48px;
+    border: 2px solid #000;
+    background: #fff;
+    color: #000;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.3s;
     position: relative;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.voice-icon {
+    font-size: 1.2rem;
+    filter: grayscale(1) brightness(0); /* 白黒アイコン */
 }
 
 .voice-btn::after {
     content: '';
     position: absolute;
-    inset: 8px;
+    inset: 4px;
     border: 2px solid transparent;
-    transition: all 0.2s;
+    border-radius: 6px;
+    transition: all 0.3s;
 }
 
 .voice-btn:hover {
-    color: #000;
+    background: #000;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.voice-btn:hover .voice-icon {
+    filter: grayscale(1) brightness(0) invert(1); /* ホバー時に白に変換 */
 }
 
 .voice-btn:hover::after {
-    border-color: #000;
+    border-color: #fff;
 }
 
 .search-btn {
@@ -649,22 +668,30 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     transform: scaleX(1);
 }
 
-/* Main Content */
+/* Main Content - Balanced Chat:Results 40:60 Proportion */
 .ai-main-content {
     display: grid;
-    grid-template-columns: 380px 1fr;
+    grid-template-columns: 40% 60%;
     gap: 32px;
     margin-bottom: 48px;
+    min-height: 750px;
 }
 
-/* AI Assistant Panel */
+/* AI Assistant Panel - Optimized for 40% Width and Better Height */
 .ai-assistant-panel {
     background: #fafafa;
     border-radius: 20px;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 600px;
+    height: 700px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.ai-assistant-panel:hover {
+    border-color: #d0d0d0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
 .assistant-header {
@@ -821,7 +848,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 
 .ai-history-list {
     padding: 1rem;
-    max-height: 220px;
+    max-height: 280px;
     overflow-y: auto;
 }
 
@@ -870,14 +897,16 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     overflow: hidden;
 }
 
-/* Chat Messages */
+/* Chat Messages - Optimized for 700px Panel Height with Compact Text */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    min-height: 400px;
+    max-height: 480px;
 }
 
 .message {
@@ -898,20 +927,27 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 .message-bubble {
     max-width: 100%;
     width: 100%;
-    padding: 20px 24px;
+    padding: 16px 20px;
     background: #fff;
-    border-radius: 8px;
-    font-size: 16px;
-    line-height: 1.8;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    border: 1px solid #e0e0e0;
-    min-height: 80px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 2px solid #e0e0e0;
+    min-height: 60px;
+    transition: all 0.2s ease;
+}
+
+.message-bubble:hover {
+    border-color: #ccc;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
 
 .message-user .message-bubble {
     background: #000;
     color: #fff;
     border-color: #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* Chat Input */
@@ -955,11 +991,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     background: #fff;
     border: 2px solid #000;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 14px;
     resize: none;
     outline: none;
     transition: all 0.2s;
-    min-height: 44px;
+    min-height: 40px;
 }
 
 .chat-input:focus {
@@ -1018,11 +1054,15 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-color: #000;
 }
 
-/* Search Results Panel */
+/* Search Results Panel - Optimized for 60% Width */
 .search-results-panel {
     background: #fafafa;
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    height: 700px;
+    overflow-y: auto;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 
 .results-header {
@@ -1963,62 +2003,229 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     font-size: 14px;
 }
 
-/* Responsive */
+/* Tablet Layout - Improved Responsive Design */
 @media (max-width: 1024px) {
     .ai-main-content {
         grid-template-columns: 1fr;
-        gap: 30px;
+        gap: 24px;
+        min-height: auto;
     }
     
     .ai-assistant-panel {
-        height: 450px;
+        height: 500px;
+        order: 1;
+        margin-bottom: 16px;
+    }
+    
+    .search-results-panel {
+        order: 2;
+        height: 400px;
     }
     
     .section-container {
-        padding: 0 30px;
+        padding: 0 20px;
+    }
+    
+    .monochrome-ai-search {
+        padding: 80px 0 120px 0;
     }
 }
 
+/* Mobile Layout - Optimized for Small Screens */
 @media (max-width: 640px) {
     .monochrome-ai-search {
-        padding: 60px 0;
+        padding: 40px 0 80px 0;
+        min-height: auto;
+    }
+    
+    .section-container {
+        padding: 0 16px;
     }
     
     .section-header {
-        margin-bottom: 40px;
+        margin-bottom: 32px;
+        text-align: center;
     }
     
     .title-en {
-        font-size: 24px;
+        font-size: 20px;
     }
     
     .title-ja {
-        font-size: 18px;
+        font-size: 16px;
     }
     
+    .section-description {
+        font-size: 13px;
+        margin-bottom: 24px;
+    }
+    
+    /* Mobile Search Bar - Prevent Overlapping */
+    .ai-search-bar {
+        margin-bottom: 20px;
+        position: relative;
+        z-index: 10;
+    }
+    
+    .search-input-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+    
+    .search-input {
+        width: 100%;
+        font-size: 14px;
+        padding: 12px 16px;
+        box-sizing: border-box;
+    }
+    
+    .search-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+    }
+    
+    .voice-btn,
+    .search-btn {
+        flex: 0 0 auto;
+    }
+    
+    /* Mobile Quick Filters */
     .quick-filters {
-        grid-template-columns: repeat(2, 1fr);
+        display: flex;
+        flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
+        justify-content: center;
     }
     
     .filter-chip {
         padding: 8px 12px;
         font-size: 11px;
         border-width: 1.5px;
+        white-space: nowrap;
     }
     
+    /* Mobile Main Content */
     .ai-main-content {
         gap: 20px;
+        display: flex;
+        flex-direction: column;
     }
     
+    /* Mobile AI Assistant Panel - Fixed Height Issues */
     .ai-assistant-panel {
-        height: 350px;
-        min-height: 350px;
+        height: 400px;
+        min-height: 400px;
+        max-height: 400px;
+        order: 1;
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        box-sizing: border-box;
     }
     
-    .assistant-chat {
+    .assistant-header {
+        padding: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .assistant-info {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .assistant-name {
+        font-size: 13px;
+    }
+    
+    .assistant-status {
+        font-size: 10px;
+    }
+    
+    .ai-history-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+    
+    /* Mobile Chat Messages */
+    .chat-messages {
+        padding: 12px;
+        gap: 10px;
         min-height: 200px;
+        max-height: 240px;
+    }
+    
+    .message-bubble {
+        padding: 12px 16px;
+        font-size: 13px;
+        min-height: 50px;
+    }
+    
+    /* Mobile Chat Input */
+    .chat-input-area {
+        padding: 12px;
+    }
+    
+    .chat-input {
+        font-size: 13px;
+        padding: 10px 12px;
+        min-height: 36px;
+    }
+    
+    .chat-send-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    /* Mobile Quick Questions */
+    .quick-questions {
+        padding: 12px;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    
+    .quick-q {
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+    
+    /* Mobile Search Results Panel - Prevent Overflow */
+    .search-results-panel {
+        order: 2;
+        height: 300px;
+        min-height: 300px;
+        max-height: 300px;
+        padding: 16px;
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 0;
+    }
+    
+    .results-header {
+        margin-bottom: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .results-title {
+        font-size: 14px;
+    }
+    
+    .view-controls {
+        align-self: stretch;
+    }
+    
+    .view-btn {
+        padding: 8px 12px;
+        font-size: 11px;
     }
     
     /* Smart No Results - Mobile */
@@ -2049,33 +2256,98 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-@media (max-width: 768px) {
+/* Larger Mobile/Small Tablet - 768px breakpoint */
+@media (max-width: 768px) and (min-width: 641px) {
     .monochrome-ai-search {
-        padding: 80px 0;
+        padding: 60px 0 100px 0;
+    }
+    
+    .section-container {
+        padding: 0 20px;
     }
     
     .section-header {
-        margin-bottom: 50px;
+        margin-bottom: 40px;
     }
     
     .title-en {
-        font-size: 28px;
+        font-size: 24px;
+    }
+    
+    .title-ja {
+        font-size: 17px;
+    }
+    
+    .ai-main-content {
+        gap: 24px;
+    }
+    
+    .ai-assistant-panel {
+        height: 450px;
+    }
+    
+    .search-results-panel {
+        height: 350px;
     }
     
     .quick-filters {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 10px;
-        margin-bottom: 40px;
+        margin-bottom: 32px;
         padding: 0;
     }
     
     .filter-chip {
-        padding: 10px 16px;
+        padding: 10px 14px;
         font-size: 12px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    
+    .featured-grants,
+    .results-container {
+        padding: 0;
+    }
+}
+
+/* Extra Small Mobile - Additional optimizations */
+@media (max-width: 480px) {
+    .monochrome-ai-search {
+        padding: 30px 0 60px 0;
+    }
+    
+    .section-container {
+        padding: 0 12px;
+    }
+    
+    .ai-assistant-panel {
+        height: 350px;
+        min-height: 350px;
+    }
+    
+    .chat-messages {
+        min-height: 160px;
+        max-height: 200px;
+    }
+    
+    .search-results-panel {
+        height: 250px;
+    }
+    
+    .quick-filters {
+        gap: 6px;
+    }
+    
+    .filter-chip {
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+    
+    .message-bubble {
+        padding: 10px 14px;
+        font-size: 12px;
     }
     
     .featured-grants,
@@ -2271,6 +2543,70 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     .category-chip {
         padding: 10px 16px;
         font-size: 13px;
+    }
+}
+
+/* Additional Mobile Fixes - Prevent Overlapping */
+@media (max-width: 640px) {
+    /* Ensure proper stacking context */
+    .ai-search-interface > * {
+        position: relative;
+    }
+    
+    /* Fix history panel on mobile */
+    .ai-history-panel {
+        position: fixed !important;
+        top: 20px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-height: 70vh;
+        z-index: 9999 !important;
+    }
+    
+    /* Prevent horizontal overflow */
+    .monochrome-ai-search,
+    .section-container,
+    .ai-search-interface,
+    .ai-main-content {
+        overflow-x: hidden;
+    }
+    
+    /* Ensure proper spacing between elements */
+    .ai-search-bar + .quick-filters {
+        margin-top: 16px;
+    }
+    
+    .quick-filters + .ai-main-content {
+        margin-top: 20px;
+    }
+    
+    /* Fix any potential overlapping with background elements */
+    .background-effects {
+        display: none;
+    }
+}
+
+/* Ultra-small screens */
+@media (max-width: 360px) {
+    .section-container {
+        padding: 0 8px;
+    }
+    
+    .ai-assistant-panel,
+    .search-results-panel {
+        margin: 0 -4px;
+        border-radius: 12px;
+    }
+    
+    .message-bubble {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+    
+    .chat-input {
+        font-size: 12px;
+        padding: 8px 10px;
     }
 }
 </style>

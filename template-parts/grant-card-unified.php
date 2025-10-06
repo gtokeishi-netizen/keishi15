@@ -295,13 +295,13 @@ static $assets_loaded = false;
 	
 
 /* ============================================
-   カード表示モード - 改良版
+   カード表示モード - コンパクト版（縦サイズを小さく）
 ============================================ */
 .grant-view-card .grant-card-unified {
     position: relative;
     width: 100%;
     max-width: 100%;
-    min-height: 420px;
+    min-height: 320px; /* 420px から 320px に縮小 */
     background: var(--clean-white);
     border: 2px solid var(--clean-gray-300);
     border-radius: var(--clean-radius-xl);
@@ -581,17 +581,17 @@ static $assets_loaded = false;
 }
 
 /* ============================================
-   トレーディングカード風 AI要約セクション - メイン表示版
+   トレーディングカード風 AI要約セクション - 全面表示版（縦サイズ拡大）
 ============================================ */
 .grant-ai-summary {
     position: relative;
-    padding: 1.8rem;
+    padding: 2rem;
     background: linear-gradient(145deg, #ffffff 0%, #f8fafc 30%, #ffffff 70%, #f0f9ff 100%);
     border: 4px solid var(--clean-gray-900);
     border-radius: var(--clean-radius-2xl);
-    margin-bottom: 2rem;
-    min-height: 160px;
-    max-height: 200px;
+    margin-bottom: 1.5rem; /* 2rem から 1.5rem に縮小 */
+    min-height: 180px; /* 160px から 180px に拡大 */
+    max-height: 240px; /* 200px から 240px に拡大 */
     overflow: hidden;
     transition: var(--clean-transition-slow);
     box-shadow: 
@@ -601,12 +601,13 @@ static $assets_loaded = false;
         inset 0 -2px 8px rgba(0, 0, 0, 0.05);
     cursor: default;
     z-index: 5;
+    flex: 1; /* 利用可能なスペースを最大限使用 */
 }
 
 /* トレーディングカード風ホバーエフェクト - スクロール機能付き */
 .grant-ai-summary:hover {
     transform: translateY(-8px) scale(1.03) rotateX(3deg);
-    max-height: 250px;
+    max-height: 280px; /* 250px から 280px に拡大 */
     overflow-y: auto;
     box-shadow: 
         0 20px 45px rgba(0, 0, 0, 0.25),
@@ -695,14 +696,14 @@ static $assets_loaded = false;
     }
 }
 
-/* スクロール可能なAI要約テキスト - 改良版 */
+/* スクロール可能なAI要約テキスト - 全面表示版 */
 .grant-ai-summary-text {
     color: var(--clean-gray-900);
-    font-size: 1rem;
+    font-size: 1.05rem; /* 1rem から 1.05rem に拡大 */
     line-height: 1.7;
     margin: 0;
     font-weight: 600;
-    max-height: 100px;
+    max-height: 140px; /* 100px から 140px に拡大 */
     overflow-y: hidden;
     padding-right: 0.75rem;
     position: relative;
@@ -712,7 +713,7 @@ static $assets_loaded = false;
 
 /* ホバー時にスクロール可能に */
 .grant-ai-summary:hover .grant-ai-summary-text {
-    max-height: 180px;
+    max-height: 220px; /* 180px から 220px に拡大 */
     overflow-y: auto;
     padding-right: 0.5rem;
 }
@@ -1728,27 +1729,29 @@ emoji,
         cursor: pointer;
     }
     
-    /* AI要約セクションの高さ調整 - モバイル最適化 */
+    /* AI要約セクションの高さ調整 - モバイル最適化（全面表示版） */
     .grant-ai-summary {
-        min-height: auto;
-        max-height: 180px;
+        min-height: 160px; /* auto から 160px に変更 */
+        max-height: 200px; /* 180px から 200px に拡大 */
         padding: 1.25rem;
         border-width: 3px;
         margin-bottom: 1.25rem;
         overflow-y: auto;
+        flex: 1; /* 利用可能なスペースを最大限使用 */
     }
     
     /* モバイルではホバーではなくタップでスクロール可能に */
     .grant-ai-summary:active {
-        max-height: 220px;
+        max-height: 240px; /* 220px から 240px に拡大 */
         overflow-y: auto;
     }
     
     .grant-ai-summary-text {
-        -webkit-line-clamp: 4;
-        font-size: 0.9375rem;
+        -webkit-line-clamp: 5; /* 4 から 5 に拡大 */
+        font-size: 0.95rem; /* 0.9375rem から 0.95rem に拡大 */
         line-height: 1.6;
         font-weight: 500;
+        max-height: 120px; /* テキスト領域も拡大 */
     }
     
     .grant-ai-summary-label {
@@ -1800,9 +1803,9 @@ emoji,
         border-width: 2px;
     }
     
-    /* カードの最小高さ調整 */
+    /* カードの最小高さ調整 - コンパクト版 */
     .grant-view-card .grant-card-unified {
-        min-height: auto;
+        min-height: 280px; /* auto から 280px に変更（デスクトップの320pxより小さく） */
         padding-bottom: 0;
     }
     
@@ -2809,26 +2812,7 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- トレーディングカード風情報グリッド - 助成額と地域のみ -->
-            <div class="grant-info-grid">
-                <!-- 助成金額 -->
-                <?php if ($amount_display): ?>
-                <div class="grant-info-item grant-info-item--amount">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label" data-type="amount">助成額</span>
-                        <span class="grant-info-value"><?php echo esc_html($amount_display); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- 地域 -->
-                <div class="grant-info-item grant-info-item--location">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label" data-type="region">地域</span>
-                        <span class="grant-info-value"><?php echo esc_html($prefecture); ?></span>
-                    </div>
-                </div>
-            </div>
+            <!-- 情報グリッドをホバー時のみ表示に変更 -->
             
             <!-- タグ -->
             <?php if ($main_industry || $application_period): ?>
@@ -2903,7 +2887,7 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- クイック統計 -->
+            <!-- クイック統計 - 助成額と地域を表示 -->
             <div class="grant-quick-stats">
                 <?php if ($amount_display): ?>
                 <div class="grant-stat-item">
