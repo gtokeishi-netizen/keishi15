@@ -2776,6 +2776,10 @@ $region_mapping = [
             document.querySelectorAll('.prefecture-checkbox:checked')
         ).map(cb => cb.dataset.prefectureName);
         
+        const selectedPrefSlugs = Array.from(
+            document.querySelectorAll('.prefecture-checkbox:checked')
+        ).map(cb => cb.value);
+        
         // 市町村コンテナの表示/非表示と絞り込み
         const municipalityContainer = document.querySelector('.municipality-selection-container');
         const noMunicipalityMessage = municipalityContainer?.querySelector('.no-municipality-message');
@@ -2784,12 +2788,7 @@ $region_mapping = [
             if (selectedPrefectures.length > 0) {
                 municipalityContainer.style.display = '';
                 
-                // 選択された都道府県のslugを取得
-                const selectedPrefSlugs = Array.from(
-                    document.querySelectorAll('.prefecture-checkbox:checked')
-                ).map(cb => cb.value);
-                
-                // 市町村を絞り込んで表示
+                // 既存の市町村を絞り込み表示
                 const municipalityOptions = document.querySelectorAll('.municipality-option');
                 let visibleCount = 0;
                 
@@ -2800,19 +2799,35 @@ $region_mapping = [
                         visibleCount++;
                     } else {
                         option.style.display = 'none';
+                        // 非表示になった都道府県の市町村チェックを外す
+                        const checkbox = option.querySelector('input[type="checkbox"]');
+                        if (checkbox && checkbox.checked) {
+                            checkbox.checked = false;
+                        }
                     }
                 });
+                
+                // 動的に市町村データを読み込み（利用可能な場合）
+                if (window.gi_ajax && selectedPrefSlugs.length > 0) {
+                    loadMunicipalitiesForPrefectures(selectedPrefSlugs);
+                }
                 
                 // 市町村が1つも見つからない場合のメッセージ
                 if (noMunicipalityMessage) {
                     if (visibleCount === 0) {
                         noMunicipalityMessage.style.display = 'block';
+                        noMunicipalityMessage.textContent = '選択した都道府県の市町村データを読み込み中...';
                     } else {
                         noMunicipalityMessage.style.display = 'none';
                     }
                 }
             } else {
                 municipalityContainer.style.display = 'none';
+                
+                // 全ての市町村チェックを外す
+                document.querySelectorAll('.municipality-checkbox:checked').forEach(cb => {
+                    cb.checked = false;
+                });
             }
         }
         
@@ -3173,6 +3188,125 @@ $region_mapping = [
         init();
     }
 })();
+
+// ============================================
+// Municipality Loading Functions
+// ============================================
+
+/**
+ * Load municipalities for selected prefectures via AJAX
+ */
+async function loadMunicipalitiesForPrefectures(prefectureSlugs) {
+    if (!window.gi_ajax || !prefectureSlugs || prefectureSlugs.length === 0) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(window.gi_ajax.ajax_url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'gi_ajax_get_municipalities_for_prefectures',
+                nonce: window.gi_ajax.nonce,
+                prefecture_slugs: JSON.stringify(prefectureSlugs)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            updateMunicipalityOptions(data.data);
+        } else {
+            console.warn('Failed to load municipalities:', data.data || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error loading municipalities:', error);
+    }
+}
+
+/**
+ * Update municipality options in the UI
+ */
+function updateMunicipalityOptions(municipalitiesData) {
+    const municipalityContainer = document.querySelector('.municipality-selection-container');
+    if (!municipalityContainer) return;
+    
+    const municipalityList = municipalityContainer.querySelector('.municipality-list') || 
+                           municipalityContainer.querySelector('.clean-checkboxes-list');
+    
+    if (!municipalityList) return;
+    
+    // Clear existing dynamic municipalities (keep only static ones)
+    const existingDynamic = municipalityList.querySelectorAll('.municipality-option[data-dynamic="true"]');
+    existingDynamic.forEach(el => el.remove());
+    
+    // Add new municipalities
+    Object.entries(municipalitiesData).forEach(([prefectureSlug, municipalities]) => {
+        municipalities.forEach(municipality => {
+            // Check if municipality already exists
+            const existingOption = municipalityList.querySelector(
+                `.municipality-option[data-prefecture="${prefectureSlug}"] input[value="${municipality.slug}"]`
+            );
+            
+            if (!existingOption) {
+                const optionHtml = createMunicipalityOptionHtml(municipality, prefectureSlug);
+                municipalityList.insertAdjacentHTML('beforeend', optionHtml);
+            }
+        });
+    });
+    
+    // Update visibility based on selected prefectures
+    const selectedPrefSlugs = Array.from(
+        document.querySelectorAll('.prefecture-checkbox:checked')
+    ).map(cb => cb.value);
+    
+    const municipalityOptions = municipalityList.querySelectorAll('.municipality-option');
+    let visibleCount = 0;
+    
+    municipalityOptions.forEach(option => {
+        const prefSlug = option.dataset.prefecture;
+        if (selectedPrefSlugs.includes(prefSlug)) {
+            option.style.display = '';
+            visibleCount++;
+        } else {
+            option.style.display = 'none';
+        }
+    });
+    
+    // Update no municipality message
+    const noMunicipalityMessage = municipalityContainer.querySelector('.no-municipality-message');
+    if (noMunicipalityMessage) {
+        if (visibleCount === 0) {
+            noMunicipalityMessage.style.display = 'block';
+            noMunicipalityMessage.textContent = '選択した都道府県に市町村データが見つかりません。';
+        } else {
+            noMunicipalityMessage.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Create HTML for municipality option
+ */
+function createMunicipalityOptionHtml(municipality, prefectureSlug) {
+    const isChecked = window.CleanGrants && window.CleanGrants.state && 
+                     window.CleanGrants.state.filters.municipalities.includes(municipality.slug) ? 
+                     'checked' : '';
+    
+    return `
+        <div class="municipality-option" data-prefecture="${prefectureSlug}" data-dynamic="true">
+            <label class="clean-checkbox">
+                <input type="checkbox" name="municipalities[]" value="${municipality.slug}" 
+                       class="municipality-checkbox" ${isChecked}
+                       onchange="window.CleanGrants && window.CleanGrants.handleFilterChange && window.CleanGrants.handleFilterChange()">
+                <span class="clean-checkbox-mark"></span>
+                <span class="clean-checkbox-label">${municipality.name}</span>
+            </label>
+        </div>
+    `;
+}
 
 // ============================================
 // 提案6: AI Filter Optimization

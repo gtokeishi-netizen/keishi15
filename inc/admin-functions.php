@@ -893,45 +893,182 @@ class GrantPostMetaboxes {
     }
     
     /**
-     * 対象市町村メタボックス
+     * 対象市町村メタボックス（強化版）
      */
     public function render_municipality_metabox($post) {
-        $municipalities = get_terms(array(
-            'taxonomy' => 'grant_municipality',
-            'hide_empty' => false,
-            'orderby' => 'name'
-        ));
-        
+        // 地域制限タイプを取得
+        $regional_limitation = get_post_meta($post->ID, 'regional_limitation', true);
+        $selected_prefectures = wp_get_post_terms($post->ID, 'grant_prefecture', array('fields' => 'slugs'));
         $post_municipalities = wp_get_post_terms($post->ID, 'grant_municipality', array('fields' => 'ids'));
         
         ?>
         <div class="grant-metabox-content">
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="municipality_search" placeholder="市町村を検索..." style="width: 100%;">
+            <div class="municipality-type-selector" style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin: 0 0 10px 0;">地域制限タイプ</h4>
+                <label style="display: block; margin-bottom: 5px;">
+                    <input type="radio" name="municipality_selection_type" value="prefecture_level" 
+                           <?php checked($regional_limitation !== 'municipality_only'); ?>>
+                    都道府県レベル（自動設定）
+                </label>
+                <label style="display: block;">
+                    <input type="radio" name="municipality_selection_type" value="municipality_level" 
+                           <?php checked($regional_limitation === 'municipality_only'); ?>>
+                    市町村レベル（手動選択）
+                </label>
             </div>
             
-            <div id="grant-municipality-selection" style="max-height: 250px; overflow-y: auto;">
-                <?php if (!empty($municipalities) && !is_wp_error($municipalities)): ?>
-                    <?php foreach ($municipalities as $municipality): ?>
-                        <label style="display: block; margin-bottom: 6px;" class="municipality-option">
-                            <input type="checkbox" 
-                                   name="grant_municipalities[]" 
-                                   value="<?php echo esc_attr($municipality->term_id); ?>"
-                                   <?php checked(in_array($municipality->term_id, $post_municipalities)); ?>>
-                            <?php echo esc_html($municipality->name); ?>
-                            <span style="color: #666;">（<?php echo $municipality->count; ?>件）</span>
-                        </label>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p style="color: #666;">市町村データがありません。</p>
-                <?php endif; ?>
+            <div id="prefecture-level-info" style="margin-bottom: 15px; padding: 10px; background: #e8f5e8; border-radius: 4px; display: <?php echo $regional_limitation !== 'municipality_only' ? 'block' : 'none'; ?>;">
+                <p style="margin: 0; font-size: 13px;">
+                    <strong>📍 都道府県レベル:</strong> 選択した都道府県全体が対象の助成金です。市町村は自動で設定されます。
+                </p>
+            </div>
+            
+            <div id="municipality-level-controls" style="display: <?php echo $regional_limitation === 'municipality_only' ? 'block' : 'none'; ?>;">
+                <div class="prefecture-filter" style="margin-bottom: 10px;">
+                    <label for="prefecture_filter" style="font-weight: bold;">都道府県で絞り込み:</label>
+                    <select id="prefecture_filter" style="width: 100%; margin-top: 5px;">
+                        <option value="">-- すべての都道府県 --</option>
+                        <?php
+                        $prefectures = gi_get_all_prefectures();
+                        foreach ($prefectures as $pref):
+                        ?>
+                        <option value="<?php echo esc_attr($pref['slug']); ?>">
+                            <?php echo esc_html($pref['name']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <input type="text" id="municipality_search" placeholder="市町村を検索..." style="width: 100%;">
+                </div>
+                
+                <div id="grant-municipality-selection" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: white;">
+                    <?php
+                    // 階層構造で市町村を表示
+                    $prefectures = gi_get_all_prefectures();
+                    foreach ($prefectures as $pref):
+                        $pref_municipalities = get_terms(array(
+                            'taxonomy' => 'grant_municipality',
+                            'hide_empty' => false,
+                            'meta_query' => array(
+                                array(
+                                    'key' => 'prefecture_slug',
+                                    'value' => $pref['slug'],
+                                    'compare' => '='
+                                )
+                            )
+                        ));
+                        
+                        // 都道府県スラッグで市町村を取得（新しい方法）
+                        if (empty($pref_municipalities)) {
+                            $pref_municipalities = get_terms(array(
+                                'taxonomy' => 'grant_municipality',
+                                'hide_empty' => false,
+                                'search' => $pref['name']
+                            ));
+                        }
+                        
+                        if (!empty($pref_municipalities) && !is_wp_error($pref_municipalities)):
+                    ?>
+                    <div class="prefecture-group" data-prefecture="<?php echo esc_attr($pref['slug']); ?>" style="margin-bottom: 20px;">
+                        <h5 style="margin: 0 0 8px 0; padding: 5px 10px; background: #f0f0f0; border-left: 3px solid #0073aa; font-size: 14px;">
+                            <?php echo esc_html($pref['name']); ?>
+                        </h5>
+                        <div class="municipality-list" style="margin-left: 15px;">
+                            <?php foreach ($pref_municipalities as $municipality): ?>
+                                <label style="display: block; margin-bottom: 4px; font-size: 13px;" class="municipality-option" data-prefecture="<?php echo esc_attr($pref['slug']); ?>">
+                                    <input type="checkbox" 
+                                           name="grant_municipalities[]" 
+                                           value="<?php echo esc_attr($municipality->term_id); ?>"
+                                           <?php checked(in_array($municipality->term_id, $post_municipalities)); ?>>
+                                    <?php echo esc_html($municipality->name); ?>
+                                    <span style="color: #666; font-size: 12px;">（<?php echo $municipality->count; ?>件）</span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php 
+                        endif;
+                    endforeach; 
+                    ?>
+                </div>
                 
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
-                    <input type="text" id="new_municipality" placeholder="新しい市町村名" style="width: 70%;">
-                    <button type="button" id="add_municipality" class="button button-small">追加</button>
+                    <div style="display: flex; gap: 5px;">
+                        <select id="new_municipality_prefecture" style="width: 30%;">
+                            <option value="">都道府県選択</option>
+                            <?php foreach ($prefectures as $pref): ?>
+                            <option value="<?php echo esc_attr($pref['slug']); ?>">
+                                <?php echo esc_html($pref['name']); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" id="new_municipality" placeholder="新しい市町村名" style="width: 45%;">
+                        <button type="button" id="add_municipality" class="button button-small" style="width: 20%;">追加</button>
+                    </div>
                 </div>
             </div>
+            
+            <div id="auto-municipality-info" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 4px; display: <?php echo $regional_limitation !== 'municipality_only' ? 'block' : 'none'; ?>;">
+                <p style="margin: 0; font-size: 13px;">
+                    <strong>ℹ️ 自動設定:</strong> 都道府県を選択すると、該当する市町村が自動で設定されます。
+                </p>
+            </div>
         </div>
+        
+        <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            // 地域制限タイプの切り替え
+            $('input[name="municipality_selection_type"]').change(function() {
+                var selectedType = $(this).val();
+                
+                if (selectedType === 'prefecture_level') {
+                    $('#prefecture-level-info, #auto-municipality-info').show();
+                    $('#municipality-level-controls').hide();
+                    
+                    // 地域制限フィールドを更新
+                    $('select[name="acf[field_regional_limitation]"], input[name="regional_limitation"]').val('prefecture_only');
+                } else {
+                    $('#prefecture-level-info, #auto-municipality-info').hide();
+                    $('#municipality-level-controls').show();
+                    
+                    // 地域制限フィールドを更新
+                    $('select[name="acf[field_regional_limitation]"], input[name="regional_limitation"]').val('municipality_only');
+                }
+            });
+            
+            // 都道府県フィルター
+            $('#prefecture_filter').change(function() {
+                var selectedPref = $(this).val();
+                
+                $('.prefecture-group').each(function() {
+                    var prefSlug = $(this).data('prefecture');
+                    
+                    if (!selectedPref || prefSlug === selectedPref) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+            
+            // 市町村検索
+            $('#municipality_search').on('input', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                
+                $('.municipality-option').each(function() {
+                    var municipalityName = $(this).text().toLowerCase();
+                    
+                    if (!searchTerm || municipalityName.indexOf(searchTerm) !== -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+        });
+        </script>
         <?php
     }
     

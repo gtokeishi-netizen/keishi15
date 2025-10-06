@@ -557,6 +557,126 @@ function gi_get_all_prefectures() {
 }
 
 /**
+ * 都道府県別市町村マスターデータを取得
+ */
+function gi_get_municipalities_by_prefecture($prefecture_slug) {
+    $municipality_map = array(
+        'hokkaido' => array('札幌市', '函館市', '小樽市', '旭川市', '室蘭市', '釧路市', '帯広市', '北見市', '夕張市', '岩見沢市'),
+        'aomori' => array('青森市', '弘前市', '八戸市', '黒石市', '五所川原市', 'つがる市', '平川市'),
+        'iwate' => array('盛岡市', '宮古市', '大船渡市', '花巻市', '北上市', '久慈市', '遠野市', '一関市', '陸前高田市'),
+        'miyagi' => array('仙台市', '石巻市', '塩竈市', '気仙沼市', '白石市', '名取市', '角田市', '多賀城市', '岩沼市', '登米市'),
+        'akita' => array('秋田市', '能代市', '横手市', '大館市', '男鹿市', '湯沢市', '鹿角市', '由利本荘市', 'にかほ市'),
+        'yamagata' => array('山形市', '米沢市', '鶴岡市', '酒田市', '新庄市', '寒河江市', '上山市', '村山市', '長井市'),
+        'fukushima' => array('福島市', '会津若松市', '郡山市', 'いわき市', '白河市', '須賀川市', '喜多方市', '相馬市'),
+        'ibaraki' => array('水戸市', '日立市', '土浦市', '古河市', '石岡市', '結城市', '龍ケ崎市', '下妻市', '常総市'),
+        'tochigi' => array('宇都宮市', '足利市', '栃木市', '佐野市', '鹿沼市', '日光市', '小山市', '真岡市', '大田原市'),
+        'gunma' => array('前橋市', '高崎市', '桐生市', '伊勢崎市', '太田市', '沼田市', '館林市', '渋川市', '藤岡市'),
+        'saitama' => array('さいたま市', '川越市', '熊谷市', '川口市', '行田市', '秩父市', '所沢市', '飯能市', '加須市', '本庄市'),
+        'chiba' => array('千葉市', '銚子市', '市川市', '船橋市', '館山市', '木更津市', '松戸市', '野田市', '茂原市', '成田市'),
+        'tokyo' => array('千代田区', '中央区', '港区', '新宿区', '文京区', '台東区', '墨田区', '江東区', '品川区', '目黒区', '大田区', '世田谷区', '渋谷区', '中野区', '杉並区', '豊島区', '北区', '荒川区', '板橋区', '練馬区', '足立区', '葛飾区', '江戸川区', '八王子市', '立川市', '武蔵野市', '三鷹市', '青梅市', '府中市', '昭島市', '調布市'),
+        'kanagawa' => array('横浜市', '川崎市', '相模原市', '横須賀市', '平塚市', '鎌倉市', '藤沢市', '小田原市', '茅ヶ崎市', '逗子市'),
+        'niigata' => array('新潟市', '長岡市', '三条市', '柏崎市', '新発田市', '小千谷市', '加茂市', '十日町市', '見附市'),
+        'toyama' => array('富山市', '高岡市', '魚津市', '氷見市', '滑川市', '黒部市', '砺波市', '小矢部市', '南砺市'),
+        'ishikawa' => array('金沢市', '七尾市', '小松市', '輪島市', '珠洲市', '加賀市', '羽咋市', 'かほく市', '白山市'),
+        'fukui' => array('福井市', '敦賀市', '小浜市', '大野市', '勝山市', '鯖江市', 'あわら市', '越前市'),
+        'yamanashi' => array('甲府市', '富士吉田市', '都留市', '山梨市', '大月市', '韮崎市', '南アルプス市', '北杜市'),
+        'nagano' => array('長野市', '松本市', '上田市', '岡谷市', '飯田市', '諏訪市', '須坂市', '小諸市', '伊那市'),
+        'gifu' => array('岐阜市', '大垣市', '高山市', '多治見市', '関市', '中津川市', '美濃市', '瑞浪市', '羽島市'),
+        'shizuoka' => array('静岡市', '浜松市', '沼津市', '熱海市', '三島市', '富士宮市', '伊東市', '島田市', '富士市'),
+        'aichi' => array('名古屋市', '豊橋市', '岡崎市', '一宮市', '瀬戸市', '半田市', '春日井市', '豊川市', '津島市'),
+        'mie' => array('津市', '四日市市', '伊勢市', '松阪市', '桑名市', '鈴鹿市', '名張市', '尾鷲市', '亀山市'),
+        'shiga' => array('大津市', '彦根市', '長浜市', '近江八幡市', '草津市', '守山市', '栗東市', '甲賀市', '野洲市'),
+        'kyoto' => array('京都市', '福知山市', '舞鶴市', '綾部市', '宇治市', '宮津市', '亀岡市', '城陽市', '向日市'),
+        'osaka' => array('大阪市', '堺市', '岸和田市', '豊中市', '池田市', '吹田市', '泉大津市', '高槻市', '貝塚市'),
+        'hyogo' => array('神戸市', '姫路市', '尼崎市', '明石市', '西宮市', '洲本市', '芦屋市', '伊丹市', '相生市'),
+        'nara' => array('奈良市', '大和高田市', '大和郡山市', '天理市', '橿原市', '桜井市', '五條市', '御所市'),
+        'wakayama' => array('和歌山市', '海南市', '橋本市', '有田市', '御坊市', '田辺市', '新宮市', '紀の川市'),
+        'tottori' => array('鳥取市', '米子市', '倉吉市', '境港市'),
+        'shimane' => array('松江市', '浜田市', '出雲市', '益田市', '大田市', '安来市', '江津市', '雲南市'),
+        'okayama' => array('岡山市', '倉敷市', '津山市', '玉野市', '笠岡市', '井原市', '総社市', '高梁市', '新見市'),
+        'hiroshima' => array('広島市', '呉市', '竹原市', '三原市', '尾道市', '福山市', '府中市', '三次市', '庄原市'),
+        'yamaguchi' => array('下関市', '宇部市', '山口市', '萩市', '防府市', '下松市', '岩国市', '光市', '長門市'),
+        'tokushima' => array('徳島市', '鳴門市', '小松島市', '阿南市', '吉野川市', '阿波市', '美馬市', '三好市'),
+        'kagawa' => array('高松市', '丸亀市', '坂出市', '善通寺市', '観音寺市', 'さぬき市', '東かがわ市', '三豊市'),
+        'ehime' => array('松山市', '今治市', '宇和島市', '八幡浜市', '新居浜市', '西条市', '大洲市', '伊予市'),
+        'kochi' => array('高知市', '室戸市', '安芸市', '南国市', '土佐市', '須崎市', '宿毛市', '土佐清水市'),
+        'fukuoka' => array('北九州市', '福岡市', '大牟田市', '久留米市', '直方市', '飯塚市', '田川市', '柳川市'),
+        'saga' => array('佐賀市', '唐津市', '鳥栖市', '多久市', '伊万里市', '武雄市', '鹿島市', '小城市'),
+        'nagasaki' => array('長崎市', '佐世保市', '島原市', '諫早市', '大村市', '平戸市', '松浦市', '対馬市'),
+        'kumamoto' => array('熊本市', '八代市', '人吉市', '荒尾市', '水俣市', '玉名市', '山鹿市', '菊池市'),
+        'oita' => array('大分市', '別府市', '中津市', '日田市', '佐伯市', '臼杵市', '津久見市', '竹田市'),
+        'miyazaki' => array('宮崎市', '都城市', '延岡市', '日南市', '小林市', '日向市', '串間市', '西都市'),
+        'kagoshima' => array('鹿児島市', '鹿屋市', '枕崎市', '阿久根市', '出水市', '指宿市', '西之表市', '垂水市'),
+        'okinawa' => array('那覇市', '宜野湾市', '石垣市', '浦添市', '名護市', '糸満市', '沖縄市', '豊見城市')
+    );
+    
+    return isset($municipality_map[$prefecture_slug]) ? $municipality_map[$prefecture_slug] : array();
+}
+
+/**
+ * 都道府県の市町村タームを初期化
+ */
+function gi_init_municipalities_for_prefecture($prefecture_slug, $prefecture_name) {
+    $municipalities = gi_get_municipalities_by_prefecture($prefecture_slug);
+    
+    if (empty($municipalities)) {
+        return false;
+    }
+    
+    // 都道府県レベルの市町村ターム（従来通り）
+    $prefecture_muni_term = get_term_by('name', $prefecture_name, 'grant_municipality');
+    if (!$prefecture_muni_term) {
+        $pref_result = wp_insert_term(
+            $prefecture_name,
+            'grant_municipality',
+            array(
+                'slug' => $prefecture_slug . '-prefecture-level',
+                'description' => $prefecture_name . 'レベルの助成金'
+            )
+        );
+        $prefecture_muni_term_id = !is_wp_error($pref_result) ? $pref_result['term_id'] : null;
+    } else {
+        $prefecture_muni_term_id = $prefecture_muni_term->term_id;
+    }
+    
+    // 各市町村のタームを作成（都道府県タームの子要素として）
+    foreach ($municipalities as $municipality_name) {
+        $existing_term = get_term_by('name', $municipality_name, 'grant_municipality');
+        if (!$existing_term) {
+            wp_insert_term(
+                $municipality_name,
+                'grant_municipality',
+                array(
+                    'slug' => $prefecture_slug . '-' . sanitize_title($municipality_name),
+                    'description' => $prefecture_name . 'の' . $municipality_name,
+                    'parent' => $prefecture_muni_term_id
+                )
+            );
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * 全都道府県の市町村データを初期化（一度だけ実行）
+ */
+function gi_init_all_municipalities() {
+    $init_done = get_option('gi_municipalities_initialized', false);
+    
+    if (!$init_done) {
+        $prefectures = gi_get_all_prefectures();
+        
+        foreach ($prefectures as $prefecture) {
+            gi_init_municipalities_for_prefecture($prefecture['slug'], $prefecture['name']);
+        }
+        
+        update_option('gi_municipalities_initialized', true);
+    }
+}
+add_action('after_setup_theme', 'gi_init_all_municipalities', 15);
+
+/**
  * =============================================================================
  * 4. ユーティリティ関数
  * =============================================================================

@@ -90,7 +90,7 @@ const GrantInsightAdmin = {
             });
         });
         
-        // 市町村：検索機能
+        // 市町村：検索機能（強化版）
         const municipalitySearch = document.getElementById('municipality_search');
         if (municipalitySearch) {
             municipalitySearch.addEventListener('input', (e) => {
@@ -99,8 +99,17 @@ const GrantInsightAdmin = {
                     const text = option.textContent.toLowerCase();
                     option.style.display = text.includes(searchTerm) ? 'block' : 'none';
                 });
+                
+                // 都道府県グループの表示/非表示も制御
+                document.querySelectorAll('.prefecture-group').forEach(group => {
+                    const visibleMunicipalities = group.querySelectorAll('.municipality-option[style*="block"], .municipality-option:not([style*="none"])');
+                    group.style.display = visibleMunicipalities.length > 0 ? 'block' : 'none';
+                });
             });
         }
+        
+        // 都道府県選択による市町村の自動更新
+        this.setupPrefectureMunicipalitySync();
         
         // 新規タームの追加
         this.setupNewTermAddition();
@@ -152,6 +161,120 @@ const GrantInsightAdmin = {
                 }
             });
         }
+    },
+
+    /**
+     * 都道府県と市町村の同期機能
+     */
+    setupPrefectureMunicipalitySync() {
+        // 都道府県チェックボックスの変更を監視
+        document.querySelectorAll('.prefecture-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                this.updateAvailableMunicipalities();
+            });
+        });
+        
+        // 地域制限タイプの変更を監視
+        document.querySelectorAll('input[name="municipality_selection_type"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.handleRegionalLimitationChange(e.target.value);
+            });
+        });
+        
+        // 都道府県フィルターの変更を監視
+        const prefectureFilter = document.getElementById('prefecture_filter');
+        if (prefectureFilter) {
+            prefectureFilter.addEventListener('change', (e) => {
+                this.filterMunicipalitiesByPrefecture(e.target.value);
+            });
+        }
+    },
+    
+    /**
+     * 選択された都道府県に基づいて利用可能な市町村を更新
+     */
+    updateAvailableMunicipalities() {
+        const selectedPrefectures = Array.from(document.querySelectorAll('.prefecture-checkbox:checked'))
+            .map(cb => cb.dataset.prefectureSlug || cb.value);
+        
+        // 各都道府県グループの表示/非表示を制御
+        document.querySelectorAll('.prefecture-group').forEach(group => {
+            const prefectureSlug = group.dataset.prefecture;
+            
+            if (selectedPrefectures.length === 0 || selectedPrefectures.includes(prefectureSlug)) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+                
+                // 非表示の都道府県の市町村チェックを外す
+                group.querySelectorAll('.municipality-option input[type="checkbox"]:checked').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+        });
+        
+        // 都道府県フィルターを更新
+        const prefectureFilter = document.getElementById('prefecture_filter');
+        if (prefectureFilter && selectedPrefectures.length > 0) {
+            // 最初に選択された都道府県をデフォルトに設定
+            prefectureFilter.value = selectedPrefectures[0];
+            this.filterMunicipalitiesByPrefecture(selectedPrefectures[0]);
+        }
+    },
+    
+    /**
+     * 地域制限タイプ変更の処理
+     */
+    handleRegionalLimitationChange(limitationType) {
+        const prefectureLevelInfo = document.getElementById('prefecture-level-info');
+        const municipalityLevelControls = document.getElementById('municipality-level-controls');
+        const autoMunicipalityInfo = document.getElementById('auto-municipality-info');
+        
+        if (limitationType === 'prefecture_level') {
+            if (prefectureLevelInfo) prefectureLevelInfo.style.display = 'block';
+            if (municipalityLevelControls) municipalityLevelControls.style.display = 'none';
+            if (autoMunicipalityInfo) autoMunicipalityInfo.style.display = 'block';
+            
+            // ACFフィールドの地域制限を更新
+            this.updateRegionalLimitationField('prefecture_only');
+            
+        } else if (limitationType === 'municipality_level') {
+            if (prefectureLevelInfo) prefectureLevelInfo.style.display = 'none';
+            if (municipalityLevelControls) municipalityLevelControls.style.display = 'block';
+            if (autoMunicipalityInfo) autoMunicipalityInfo.style.display = 'none';
+            
+            // ACFフィールドの地域制限を更新
+            this.updateRegionalLimitationField('municipality_only');
+        }
+    },
+    
+    /**
+     * 地域制限フィールドの更新
+     */
+    updateRegionalLimitationField(value) {
+        // ACFフィールドまたは標準フィールドを更新
+        const regionalLimitationField = document.querySelector('select[name*="regional_limitation"], input[name="regional_limitation"]');
+        if (regionalLimitationField) {
+            regionalLimitationField.value = value;
+            
+            // changeイベントを発火してACFの処理をトリガー
+            regionalLimitationField.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    },
+    
+    /**
+     * 都道府県による市町村フィルタリング
+     */
+    filterMunicipalitiesByPrefecture(prefectureSlug) {
+        document.querySelectorAll('.prefecture-group').forEach(group => {
+            const groupPrefecture = group.dataset.prefecture;
+            
+            if (!prefectureSlug || groupPrefecture === prefectureSlug) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        });
     },
 
     /**
