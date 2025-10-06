@@ -580,80 +580,169 @@ static $assets_loaded = false;
     color: var(--clean-gray-800);
 }
 
-/* AI要約セクション - 改良版 */
+/* ============================================
+   トレーディングカード風 AI要約セクション - メイン表示版
+============================================ */
 .grant-ai-summary {
     position: relative;
-    padding: 1rem;
-    background: var(--clean-gray-50);
-    border: 2px solid var(--clean-gray-200);
-    border-radius: var(--clean-radius-lg);
-    margin-bottom: 1rem;
-    min-height: auto;
-    max-height: 5.5rem;
-    overflow: hidden;
-    transition: var(--clean-transition);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
+    border: 3px solid var(--clean-gray-900);
+    border-radius: var(--clean-radius-xl);
+    margin-bottom: 1.75rem;
+    min-height: 140px;
+    max-height: none;
+    overflow-y: auto;
+    transition: var(--clean-transition-slow);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    position: relative;
 }
 
+/* トレーディングカード風ホバーエフェクト */
 .grant-ai-summary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: var(--clean-gray-400);
-    background: var(--clean-white);
+    transform: translateY(-6px) scale(1.02) rotateX(2deg);
+    box-shadow: 
+        0 15px 35px rgba(0, 0, 0, 0.2),
+        0 5px 15px rgba(0, 0, 0, 0.1),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9);
+    border-color: var(--clean-gray-800);
+    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 30%, #ffffff 100%);
 }
 
+/* 装飾的な境界線 */
+.grant-ai-summary::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: calc(var(--clean-radius-xl) - 8px);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* トレーディングカード風ラベル */
 .grant-ai-summary-label {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: var(--clean-gray-800);
+    justify-content: center;
+    gap: 0.6rem;
+    color: var(--clean-white);
+    background: linear-gradient(135deg, #000000 0%, #374151 100%);
     font-size: 0.75rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    font-weight: 900;
+    margin: -1.5rem -1.5rem 1rem -1.5rem;
+    padding: 0.75rem 1.5rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    position: relative;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+    z-index: 2;
 }
 
+/* アイコン：白黒のブレインアイコン */
+.grant-ai-summary-label::before {
+    content: '⚡';
+    font-size: 1.1rem;
+    animation: pulse-brain 2s ease-in-out infinite;
+    filter: brightness(0) invert(1);
+}
+
+@keyframes pulse-brain {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* スクロール可能なAI要約テキスト */
 .grant-ai-summary-text {
-    color: var(--clean-gray-700);
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    color: var(--clean-gray-900);
+    font-size: 0.95rem;
+    line-height: 1.65;
     margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-weight: 500;
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    position: relative;
+    z-index: 2;
 }
 
-/* 情報グリッド - 改良版 */
+/* カスタムスクロールバー */
+.grant-ai-summary-text::-webkit-scrollbar {
+    width: 4px;
+}
+
+.grant-ai-summary-text::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+}
+
+.grant-ai-summary-text::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+}
+
+.grant-ai-summary-text::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   トレーディングカード風情報グリッド - 助成額と地域のみ
+============================================ */
 .grant-info-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
     margin-bottom: 1.25rem;
-    padding: 0 0.5rem;
+    padding: 0;
 }
 
+/* トレーディングカード風情報アイテム */
 .grant-info-item {
     display: flex;
-    align-items: flex-start;
-    gap: 0;
-    padding: 0.875rem;
-    background: var(--clean-gray-50);
-    border: 2px solid var(--clean-gray-200);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem 1rem;
+    background: linear-gradient(145deg, #ffffff 0%, #f9fafb 50%, #ffffff 100%);
+    border: 2px solid var(--clean-gray-900);
     border-radius: var(--clean-radius-lg);
-    transition: var(--clean-transition);
+    transition: var(--clean-transition-slow);
     position: relative;
     overflow: hidden;
-    min-height: 65px;
+    min-height: 90px;
+    text-align: center;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+/* トレーディングカード風ホバーエフェクト */
 .grant-info-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: var(--clean-gray-400);
-    background: var(--clean-white);
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.15),
+        0 4px 10px rgba(0, 0, 0, 0.1),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9);
+    border-color: var(--clean-gray-700);
+    background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 50%, #ffffff 100%);
+}
+
+/* 装飾線 */
+.grant-info-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--clean-gray-900) 50%, transparent 100%);
 }
 
 .grant-info-content {
@@ -664,24 +753,46 @@ static $assets_loaded = false;
     gap: 0.25rem;
 }
 
+/* トレーディングカード風ラベル */
 .grant-info-label {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--clean-gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--clean-gray-700);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    position: relative;
 }
 
+/* アイコン追加 */
+.grant-info-label[data-type="amount"]::before {
+    content: '💰';
+    font-size: 0.875rem;
+    filter: grayscale(1);
+}
+
+.grant-info-label[data-type="region"]::before {
+    content: '📍';
+    font-size: 0.875rem;
+    filter: grayscale(1);
+}
+
+/* トレーディングカード風値表示 */
 .grant-info-value {
     display: block;
-    font-size: 0.85rem;
-    font-weight: 700;
+    font-size: 0.9rem;
+    font-weight: 800;
     color: var(--clean-gray-900);
-    line-height: 1.3;
+    line-height: 1.2;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 /* アクションフッター - 改良版 */
@@ -1044,40 +1155,45 @@ static $assets_loaded = false;
     75% { transform: translateX(2px); }
 }
 
-/* ホバー時の詳細表示 */
+/* ホバー時の詳細表示 - 改良版 */
 .grant-hover-details {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(248, 250, 252, 0.98);
-    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(25px);
     padding: 0;
     opacity: 0;
     visibility: hidden;
-    transition: var(--clean-transition-slow);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     overflow: hidden;
-    z-index: 5;
+    z-index: 15;
     border-radius: var(--clean-radius-xl);
     display: flex;
     flex-direction: column;
     pointer-events: none;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 3px solid var(--clean-gray-900);
 }
 
 .grant-card-unified:hover .grant-hover-details {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    transform: scale(1.02);
 }
 
-/* スクロール可能なコンテンツエリア */
+/* スクロール可能なコンテンツエリア - 改良版 */
 .grant-hover-scrollable {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 1.75rem;
+    padding: 1.5rem;
     height: 100%;
+    scroll-behavior: smooth;
+    position: relative;
 }
 
 /* スクロールバーのカスタマイズ */
@@ -1425,13 +1541,25 @@ static $assets_loaded = false;
     
     .grant-info-grid {
         grid-template-columns: 1fr;
-        gap: 0.75rem;
+        gap: 1rem;
         padding: 0;
     }
     
     .grant-info-item {
-        min-height: 60px;
-        padding: 0.75rem;
+        min-height: 70px;
+        padding: 1rem;
+        border-width: 3px;
+        border-radius: var(--clean-radius-xl);
+    }
+    
+    .grant-info-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+    
+    .grant-info-value {
+        font-size: 0.9rem;
+        font-weight: 700;
     }
     
     .grant-hover-details {
@@ -1487,18 +1615,25 @@ static $assets_loaded = false;
         cursor: pointer;
     }
     
-    /* AI要約セクションの高さ調整 */
+    /* AI要約セクションの高さ調整 - モバイル最適化 */
     .grant-ai-summary {
         min-height: auto;
         max-height: none;
-        padding: 1rem;
-        border-width: 2px;
+        padding: 1.25rem;
+        border-width: 3px;
+        margin-bottom: 1.25rem;
     }
     
     .grant-ai-summary-text {
-        -webkit-line-clamp: 3;
-        font-size: 0.875rem;
-        line-height: 1.5;
+        -webkit-line-clamp: 4;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+        font-weight: 500;
+    }
+    
+    .grant-ai-summary-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.75rem;
     }
     
     /* ステータスヘッダーをコンパクトに */
@@ -2542,24 +2677,14 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- 情報グリッド -->
+            <!-- 重要情報グリッド（AI要約重視レイアウト） -->
             <div class="grant-info-grid">
                 <!-- 助成金額 -->
                 <?php if ($amount_display): ?>
                 <div class="grant-info-item grant-info-item--amount">
                     <div class="grant-info-content">
-                        <span class="grant-info-label">助成額</span>
+                        <span class="grant-info-label">💰 助成額</span>
                         <span class="grant-info-value"><?php echo esc_html($amount_display); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- 対象者 -->
-                <?php if ($grant_target): ?>
-                <div class="grant-info-item grant-info-item--target">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label">対象</span>
-                        <span class="grant-info-value"><?php echo esc_html($grant_target); ?></span>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -2567,20 +2692,10 @@ document.head.appendChild(grantCardStyles);
                 <!-- 地域 -->
                 <div class="grant-info-item grant-info-item--location">
                     <div class="grant-info-content">
-                        <span class="grant-info-label">地域</span>
+                        <span class="grant-info-label">📍 対象地域</span>
                         <span class="grant-info-value"><?php echo esc_html($prefecture); ?></span>
                     </div>
                 </div>
-                
-                <!-- 補助率 -->
-                <?php if ($subsidy_rate): ?>
-                <div class="grant-info-item grant-info-item--rate">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label">補助率</span>
-                        <span class="grant-info-value"><?php echo esc_html($subsidy_rate); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
             
             <!-- タグ -->
@@ -2598,19 +2713,7 @@ document.head.appendChild(grantCardStyles);
                 <?php endif; ?>
             </div>
             <?php endif; ?>
-            
-            <!-- 採択率プログレスバー -->
-            <?php if ($grant_success_rate > 0): ?>
-            <div class="grant-success-rate">
-                <div class="grant-success-label">
-                    <span>採択率</span>
-                    <span><?php echo esc_html($grant_success_rate); ?>%</span>
-                </div>
-                <div class="grant-success-bar" role="progressbar" aria-valuenow="<?php echo esc_attr($grant_success_rate); ?>" aria-valuemin="0" aria-valuemax="100">
-                    <div class="grant-success-fill" data-rate="<?php echo esc_attr($grant_success_rate); ?>" style="width: 0;"></div>
-                </div>
-            </div>
-            <?php endif; ?>
+
         </div>
     </div>
     
@@ -2678,21 +2781,49 @@ document.head.appendChild(grantCardStyles);
                 </button>
             </div>
             
+            <!-- AI要約 - 詳細版 -->
+            <?php if ($ai_summary || $excerpt): ?>
+            <div class="grant-detail-section">
+                <div class="grant-detail-label">
+                    <span>🧠 AI要約（詳細）</span>
+                </div>
+                <div class="grant-detail-value">
+                    <?php echo esc_html($ai_summary ?: $excerpt); ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            
             <!-- クイック統計 -->
             <div class="grant-quick-stats">
                 <?php if ($amount_display): ?>
                 <div class="grant-stat-item">
                     <span class="grant-stat-value"><?php echo esc_html($amount_display); ?></span>
-                    <span class="grant-stat-label">最大助成額</span>
+                    <span class="grant-stat-label">💰 最大助成額</span>
                 </div>
                 <?php endif; ?>
+                <div class="grant-stat-item">
+                    <span class="grant-stat-value"><?php echo esc_html($prefecture); ?></span>
+                    <span class="grant-stat-label">📍 対象地域</span>
+                </div>
                 <?php if ($grant_success_rate > 0): ?>
                 <div class="grant-stat-item">
                     <span class="grant-stat-value"><?php echo esc_html($grant_success_rate); ?>%</span>
-                    <span class="grant-stat-label">採択率</span>
+                    <span class="grant-stat-label">📊 採択率</span>
                 </div>
                 <?php endif; ?>
             </div>
+            
+            <!-- 対象者情報（ホバー時のみ表示） -->
+            <?php if ($grant_target): ?>
+            <div class="grant-detail-section">
+                <div class="grant-detail-label">
+                    <span>🎯 対象者・対象事業</span>
+                </div>
+                <div class="grant-detail-value">
+                    <?php echo esc_html($grant_target); ?>
+                </div>
+            </div>
+            <?php endif; ?>
             
             <div class="grant-detail-sections">
                 <?php if ($ai_summary): ?>
