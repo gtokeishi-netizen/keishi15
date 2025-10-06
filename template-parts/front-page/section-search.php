@@ -2057,228 +2057,389 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Mobile Layout - Optimized for Small Screens */
+/* Mobile Layout - Highly Optimized for Small Screens */
 @media (max-width: 640px) {
     .monochrome-ai-search {
-        padding: 40px 0 80px 0;
+        padding: 20px 0 40px 0;
         min-height: auto;
     }
     
     .section-container {
-        padding: 0 16px;
+        padding: 0 8px;
     }
     
     .section-header {
-        margin-bottom: 32px;
+        margin-bottom: 16px;
         text-align: center;
     }
     
     .title-en {
-        font-size: 20px;
+        font-size: 16px;
+        line-height: 1.1;
+        margin-bottom: 6px;
     }
     
     .title-ja {
-        font-size: 16px;
+        font-size: 11px;
+        margin-bottom: 8px;
     }
     
     .section-description {
-        font-size: 13px;
-        margin-bottom: 24px;
+        font-size: 10px;
+        margin-bottom: 12px;
+        line-height: 1.3;
     }
     
-    /* Mobile Search Bar - Prevent Overlapping */
+    .header-accent {
+        display: none;
+    }
+    
+    .yellow-marker {
+        width: 30px;
+        height: 2px;
+    }
+    
+    /* Mobile Search Bar - Ultra Compact */
     .ai-search-bar {
-        margin-bottom: 20px;
+        margin-bottom: 12px;
         position: relative;
         z-index: 10;
     }
     
     .search-input-wrapper {
         display: flex;
-        flex-direction: column;
-        gap: 12px;
+        align-items: center;
+        gap: 4px;
         width: 100%;
+        border: 1px solid #000;
+        border-radius: 4px;
+        padding: 2px;
     }
     
     .search-input {
-        width: 100%;
-        font-size: 14px;
-        padding: 12px 16px;
+        flex: 1;
+        font-size: 12px;
+        padding: 8px 10px;
         box-sizing: border-box;
+        border: none;
+        background: transparent;
+    }
+    
+    .search-input::placeholder {
+        font-size: 11px;
     }
     
     .search-actions {
         display: flex;
-        justify-content: center;
-        gap: 12px;
-        width: 100%;
+        gap: 4px;
+        flex-shrink: 0;
     }
     
-    .voice-btn,
+    .voice-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #000;
+        font-size: 12px;
+    }
+    
     .search-btn {
-        flex: 0 0 auto;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 10px;
+        font-weight: 600;
     }
     
-    /* Mobile Quick Filters */
+    .btn-text {
+        display: none;
+    }
+    
+    /* Mobile Quick Filters - Minimal */
     .quick-filters {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 24px;
+        gap: 4px;
+        margin-bottom: 12px;
         justify-content: center;
     }
     
     .filter-chip {
-        padding: 8px 12px;
-        font-size: 11px;
-        border-width: 1.5px;
+        padding: 4px 8px;
+        font-size: 9px;
+        border-width: 1px;
         white-space: nowrap;
+        border-radius: 12px;
     }
     
     /* Mobile Main Content */
     .ai-main-content {
-        gap: 20px;
+        gap: 8px;
         display: flex;
         flex-direction: column;
+        margin-bottom: 0;
     }
     
-    /* Mobile AI Assistant Panel - Fixed Height Issues */
+    /* Better mobile grid layout for results */
+    .featured-grants {
+        display: block;
+    }
+    
+    .grant-card {
+        margin-bottom: 8px;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Optimize scrollbars for mobile */
+    .chat-messages::-webkit-scrollbar,
+    .search-results-panel::-webkit-scrollbar {
+        width: 3px;
+    }
+    
+    .chat-messages::-webkit-scrollbar-track,
+    .search-results-panel::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .chat-messages::-webkit-scrollbar-thumb,
+    .search-results-panel::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 2px;
+    }
+    
+    /* Remove unnecessary animations on mobile */
+    * {
+        animation-duration: 0s !important;
+        transition-duration: 0.1s !important;
+    }
+    
+    .grant-card::before,
+    .grant-card::after {
+        display: none;
+    }
+    
+    /* Mobile AI Assistant Panel - Ultra Compact */
     .ai-assistant-panel {
-        height: 400px;
-        min-height: 400px;
-        max-height: 400px;
+        height: 280px;
+        min-height: 280px;
+        max-height: 280px;
         order: 1;
         position: relative;
         overflow: hidden;
         width: 100%;
         box-sizing: border-box;
+        border-radius: 8px;
+        margin: 0 4px;
     }
     
     .assistant-header {
-        padding: 16px;
+        padding: 8px;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 6px;
+    }
+    
+    .assistant-avatar {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .avatar-icon {
+        font-size: 10px;
     }
     
     .assistant-info {
         flex: 1;
-        min-width: 120px;
+        min-width: 80px;
     }
     
     .assistant-name {
-        font-size: 13px;
+        font-size: 10px;
+        font-weight: 600;
     }
     
     .assistant-status {
-        font-size: 10px;
+        font-size: 8px;
     }
     
     .ai-history-btn {
-        padding: 6px 12px;
+        padding: 4px 8px;
+        font-size: 9px;
+        border-radius: 2px;
+    }
+    
+    .history-count {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+    
+    /* Mobile Chat Messages - Compact */
+    .chat-messages {
+        padding: 6px;
+        gap: 6px;
+        min-height: 140px;
+        max-height: 160px;
         font-size: 11px;
     }
     
-    /* Mobile Chat Messages */
-    .chat-messages {
-        padding: 12px;
-        gap: 10px;
-        min-height: 200px;
-        max-height: 240px;
-    }
-    
     .message-bubble {
-        padding: 12px 16px;
-        font-size: 13px;
-        min-height: 50px;
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 30px;
+        line-height: 1.3;
+        border-radius: 8px;
     }
     
-    /* Mobile Chat Input */
+    /* Mobile Chat Input - Compact */
     .chat-input-area {
-        padding: 12px;
+        padding: 6px;
+        display: flex;
+        gap: 4px;
     }
     
     .chat-input {
-        font-size: 13px;
-        padding: 10px 12px;
-        min-height: 36px;
+        font-size: 11px;
+        padding: 6px 8px;
+        min-height: 28px;
+        border-radius: 4px;
     }
     
     .chat-send-btn {
-        padding: 10px 16px;
-        font-size: 12px;
+        padding: 6px 12px;
+        font-size: 10px;
+        height: 28px;
+        border-radius: 4px;
     }
     
-    /* Mobile Quick Questions */
+    /* Mobile Quick Questions - Minimal */
     .quick-questions {
-        padding: 12px;
-        gap: 6px;
+        padding: 6px;
+        gap: 4px;
         flex-wrap: wrap;
     }
     
     .quick-q {
-        padding: 6px 10px;
-        font-size: 10px;
+        padding: 4px 6px;
+        font-size: 8px;
+        border-radius: 8px;
+        border-width: 1px;
     }
     
-    /* Mobile Search Results Panel - Prevent Overflow */
+    /* Mobile Search Results Panel - Ultra Compact */
     .search-results-panel {
         order: 2;
-        height: 300px;
-        min-height: 300px;
-        max-height: 300px;
-        padding: 16px;
+        height: 280px;
+        min-height: 280px;
+        max-height: 280px;
+        padding: 8px;
         position: relative;
         overflow: hidden;
         width: 100%;
         box-sizing: border-box;
-        margin-top: 0;
+        margin: 0 4px;
+        border-radius: 8px;
     }
     
     .results-header {
-        margin-bottom: 16px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
+        margin-bottom: 8px;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
     }
     
     .results-title {
-        font-size: 14px;
+        font-size: 11px;
+        margin: 0;
+    }
+    
+    #results-count {
+        font-size: 16px;
     }
     
     .view-controls {
-        align-self: stretch;
+        margin-left: auto;
     }
     
     .view-btn {
-        padding: 8px 12px;
-        font-size: 11px;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        font-size: 8px;
+        border-radius: 4px;
     }
     
-    /* Smart No Results - Mobile */
+    /* Smart No Results - Mobile Compact */
     .smart-no-results {
-        padding: 40px 20px;
+        padding: 16px 8px;
     }
     
     .no-results-header .icon-circle {
-        width: 80px;
-        height: 80px;
+        width: 50px;
+        height: 50px;
+        margin-bottom: 12px;
     }
     
-    .no-results-header .icon-circle i {
-        font-size: 32px;
+    .no-results-header .icon-circle::before {
+        display: none;
     }
     
     .no-results-header h3 {
-        font-size: 20px;
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    
+    .no-results-header p {
+        font-size: 11px;
     }
     
     .suggestions-section {
-        padding: 20px;
-        margin-bottom: 30px;
+        padding: 12px;
+        margin-bottom: 16px;
+        border-radius: 8px;
+    }
+    
+    .suggestions-section h4 {
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+    
+    .suggestion-chip,
+    .category-chip {
+        padding: 6px 12px;
+        font-size: 10px;
+        border-width: 1px;
     }
     
     .tips-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .tip-card {
+        padding: 12px;
+        border-radius: 6px;
+    }
+    
+    .tip-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    
+    .tip-content h5 {
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .tip-content p {
+        font-size: 10px;
+        margin-bottom: 6px;
+    }
+    
+    .tip-example {
+        font-size: 9px;
+        padding: 2px 6px;
     }
 }
 
@@ -2338,52 +2499,95 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Extra Small Mobile - Additional optimizations */
+/* Extra Small Mobile - Highly Compressed */
 @media (max-width: 480px) {
     .monochrome-ai-search {
-        padding: 30px 0 60px 0;
+        padding: 16px 0 24px 0;
     }
     
     .section-container {
-        padding: 0 12px;
+        padding: 0 6px;
     }
     
     .ai-assistant-panel {
-        height: 350px;
-        min-height: 350px;
+        height: 260px;
+        min-height: 260px;
+        max-height: 260px;
     }
     
     .chat-messages {
-        min-height: 160px;
-        max-height: 200px;
+        min-height: 120px;
+        max-height: 140px;
     }
     
     .search-results-panel {
-        height: 250px;
+        height: 260px;
+        min-height: 260px;
+        max-height: 260px;
     }
     
     .quick-filters {
-        gap: 6px;
+        gap: 3px;
     }
     
     .filter-chip {
-        padding: 6px 10px;
-        font-size: 10px;
+        padding: 4px 6px;
+        font-size: 9px;
     }
     
     .message-bubble {
-        padding: 10px 14px;
-        font-size: 12px;
+        padding: 6px 8px;
+        font-size: 10px;
     }
     
     .featured-grants,
     .results-container {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 8px;
+        padding: 4px;
     }
     
-    .section-container {
-        padding: 0 20px;
+    .grant-card {
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .card-title {
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+    
+    .card-meta {
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+    
+    .meta-label {
+        font-size: 8px;
+    }
+    
+    .meta-value {
+        font-size: 10px;
+    }
+    
+    .card-org {
+        font-size: 9px;
+        margin-bottom: 8px;
+    }
+    
+    .card-actions {
+        flex-direction: row;
+        gap: 6px;
+        justify-content: space-between;
+    }
+    
+    .ai-assist-btn {
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+    
+    .card-link {
+        font-size: 9px;
     }
     
     /* Search Bar - Mobile */
@@ -2478,61 +2682,94 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Ultra-small mobile phones (375px and below) */
+/* Ultra-small mobile phones (375px and below) - Maximum Compression */
 @media (max-width: 375px) {
     .monochrome-ai-search {
-        padding: 40px 0;
+        padding: 12px 0 20px 0;
     }
     
     .section-header {
-        margin-bottom: 30px;
+        margin-bottom: 12px;
     }
     
     .title-en {
-        font-size: 20px;
+        font-size: 14px;
     }
     
     .title-ja {
-        font-size: 16px;
-    }
-    
-    .section-description {
-        font-size: 13px;
-    }
-    
-    .quick-filters {
-        gap: 6px;
-        margin-bottom: 20px;
-    }
-    
-    .filter-chip {
-        padding: 6px 10px;
         font-size: 10px;
     }
     
-    .search-input-wrapper {
-        padding: 10px 12px;
+    .section-description {
+        font-size: 9px;
+        margin-bottom: 8px;
+    }
+    
+    .quick-filters {
+        gap: 3px;
+        margin-bottom: 8px;
+    }
+    
+    .filter-chip {
+        padding: 3px 6px;
+        font-size: 8px;
     }
     
     .search-input {
-        font-size: 13px;
+        font-size: 11px;
+        padding: 6px 8px;
     }
     
     .search-btn {
-        padding: 8px 16px;
+        padding: 6px 10px;
+        font-size: 9px;
+    }
+    
+    .voice-btn {
+        width: 28px;
+        height: 28px;
     }
     
     .ai-main-content {
-        gap: 15px;
+        gap: 8px;
     }
     
     .ai-assistant-panel {
-        height: 300px;
-        min-height: 300px;
+        height: 240px;
+        min-height: 240px;
+        max-height: 240px;
+    }
+    
+    .search-results-panel {
+        height: 240px;
+        min-height: 240px;
+        max-height: 240px;
     }
     
     .section-container {
-        padding: 0 16px;
+        padding: 0 4px;
+    }
+    
+    .chat-messages {
+        min-height: 100px;
+        max-height: 120px;
+    }
+    
+    .message-bubble {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+    
+    .chat-input {
+        font-size: 10px;
+        padding: 4px 6px;
+        min-height: 24px;
+    }
+    
+    .chat-send-btn {
+        font-size: 9px;
+        padding: 4px 8px;
+        height: 24px;
     }
     
     /* Smart No Results - Ultra Small */
@@ -2572,7 +2809,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-/* Additional Mobile Fixes - Prevent Overlapping */
+/* Additional Mobile Fixes - Prevent Overlapping & Ultra Compact */
 @media (max-width: 640px) {
     /* Ensure proper stacking context */
     .ai-search-interface > * {
@@ -2582,12 +2819,45 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     /* Fix history panel on mobile */
     .ai-history-panel {
         position: fixed !important;
-        top: 20px !important;
-        left: 12px !important;
-        right: 12px !important;
+        top: 10px !important;
+        left: 4px !important;
+        right: 4px !important;
         width: auto !important;
-        max-height: 70vh;
+        max-height: 60vh;
         z-index: 9999 !important;
+        border-radius: 6px;
+    }
+    
+    .ai-history-header {
+        padding: 8px;
+    }
+    
+    .ai-history-header h4 {
+        font-size: 12px;
+    }
+    
+    .ai-history-clear {
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+    
+    .ai-history-list {
+        padding: 8px;
+        max-height: 200px;
+    }
+    
+    .ai-history-item {
+        padding: 6px;
+        margin-bottom: 4px;
+        border-radius: 4px;
+    }
+    
+    .history-date {
+        font-size: 8px;
+    }
+    
+    .history-question {
+        font-size: 10px;
     }
     
     /* Prevent horizontal overflow */
@@ -2598,54 +2868,169 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         overflow-x: hidden;
     }
     
-    /* Ensure proper spacing between elements */
+    /* Compact spacing between elements */
     .ai-search-bar + .quick-filters {
-        margin-top: 16px;
+        margin-top: 8px;
     }
     
     .quick-filters + .ai-main-content {
-        margin-top: 20px;
+        margin-top: 12px;
     }
     
-    /* Fix any potential overlapping with background elements */
+    /* Hide background effects on mobile for performance */
     .background-effects {
         display: none;
     }
+    
+    /* Mobile-specific grant card optimizations */
+    .grant-card {
+        border-width: 1px;
+        transition: none; /* Remove transitions for better performance */
+    }
+    
+    .grant-card:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .card-badge {
+        font-size: 8px;
+        padding: 4px 8px;
+    }
+    
+    .rate-bar {
+        height: 3px;
+    }
+    
+    .rate-text {
+        font-size: 8px;
+    }
+    
+    /* Mobile modal optimizations */
+    .grant-assistant-modal .modal-content {
+        width: 98vw;
+        max-height: 85vh;
+        border-radius: 8px;
+        margin: 1vh auto;
+    }
+    
+    .modal-header {
+        padding: 8px;
+    }
+    
+    .assistant-details h3 {
+        font-size: 11px;
+    }
+    
+    .grant-title {
+        font-size: 9px;
+    }
+    
+    .assistant-chat {
+        padding: 8px;
+        min-height: 120px;
+        max-height: 200px;
+    }
+    
+    .suggestion-buttons {
+        padding: 0 8px 8px;
+    }
+    
+    .suggestion-btn {
+        font-size: 9px;
+        padding: 4px 8px;
+    }
+    
+    .chat-input-area {
+        padding: 8px;
+    }
+    
+    .grant-chat-input {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+    
+    .send-btn {
+        width: 32px;
+        height: 32px;
+    }
 }
 
-/* Ultra-small screens */
+/* Ultra-small screens - Extreme Optimization */
 @media (max-width: 360px) {
     .section-container {
-        padding: 0 8px;
+        padding: 0 2px;
     }
     
     .ai-assistant-panel,
     .search-results-panel {
-        margin: 0 -4px;
-        border-radius: 12px;
+        margin: 0;
+        border-radius: 6px;
+        height: 220px;
+        min-height: 220px;
+        max-height: 220px;
+    }
+    
+    .chat-messages {
+        min-height: 80px;
+        max-height: 100px;
+        padding: 4px;
     }
     
     .message-bubble {
-        padding: 8px 12px;
-        font-size: 11px;
+        padding: 4px 6px;
+        font-size: 9px;
+        line-height: 1.2;
+        min-height: 20px;
     }
     
     .chat-input {
-        font-size: 12px;
-        padding: 8px 10px;
+        font-size: 10px;
+        padding: 4px 6px;
+        min-height: 20px;
     }
     
-    /* Mobile Navigation Tabs */
+    .chat-send-btn {
+        height: 20px;
+        padding: 2px 6px;
+        font-size: 8px;
+    }
+    
+    .assistant-header {
+        padding: 4px;
+    }
+    
+    .assistant-name {
+        font-size: 9px;
+    }
+    
+    .ai-history-btn {
+        padding: 2px 4px;
+        font-size: 8px;
+    }
+    
+    .quick-questions {
+        padding: 4px;
+        gap: 2px;
+    }
+    
+    .quick-q {
+        padding: 2px 4px;
+        font-size: 7px;
+    }
+    
+    /* Mobile Navigation Tabs - Compact */
     .mobile-nav-tabs {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        height: 60px;
+        height: 48px;
         background: #fff;
         border-top: 1px solid #e0e0e0;
         display: flex;
         z-index: 300;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     }
     
     .nav-tab {
@@ -2654,12 +3039,12 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        padding: 8px 4px;
+        gap: 2px;
+        padding: 4px 2px;
         border: none;
         background: none;
         color: #666;
-        font-size: 11px;
+        font-size: 9px;
         cursor: pointer;
         transition: all 0.2s ease;
     }
@@ -2670,29 +3055,35 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .nav-tab-icon {
-        font-size: 18px;
+        font-size: 14px;
+        filter: grayscale(1);
     }
     
     .nav-tab-label {
         font-weight: 500;
+        font-size: 8px;
     }
     
-    /* Floating Action Button for Results */
+    .nav-tab.active .nav-tab-icon {
+        filter: none;
+    }
+    
+    /* Floating Action Button for Results - Compact */
     .results-fab {
         position: fixed;
-        bottom: 80px;
-        right: 20px;
-        width: 56px;
-        height: 56px;
-        border-radius: 28px;
+        bottom: 60px;
+        right: 12px;
+        width: 40px;
+        height: 40px;
+        border-radius: 20px;
         background: #000;
         color: #fff;
         border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
+        font-size: 10px;
         font-weight: 600;
         z-index: 250;
         cursor: pointer;
