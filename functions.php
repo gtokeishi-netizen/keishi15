@@ -592,6 +592,12 @@ function gi_sync_all_prefecture_to_municipality_once() {
  */
 add_action('wp_ajax_gi_bulk_fix_prefecture_municipalities', 'gi_ajax_bulk_fix_prefecture_municipalities');
 function gi_ajax_bulk_fix_prefecture_municipalities() {
+    // nonce確認
+    if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'gi_bulk_fix_nonce')) {
+        wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+        return;
+    }
+    
     // 管理者権限チェック
     if (!current_user_can('manage_options')) {
         wp_send_json_error(['message' => '権限が不足しています']);
@@ -599,14 +605,20 @@ function gi_ajax_bulk_fix_prefecture_municipalities() {
     }
     
     try {
+        error_log('Bulk Fix Prefecture Municipalities: Starting process');
+        
         // 1. 都道府県・市町村データの初期化
         if (function_exists('gi_initialize_all_municipalities')) {
+            error_log('Bulk Fix: Calling gi_initialize_all_municipalities');
             $init_result = gi_initialize_all_municipalities();
+            error_log('Bulk Fix: Initialization result: ' . json_encode($init_result));
         } else {
+            error_log('Bulk Fix: gi_initialize_all_municipalities function not found');
             $init_result = ['success' => false, 'message' => '初期化関数が見つかりません'];
         }
         
         // 2. 都道府県レベル助成金を取得
+        error_log('Bulk Fix: Searching for prefecture-level grants');
         $grants_query = new WP_Query([
             'post_type' => 'grant',
             'posts_per_page' => -1,
@@ -618,6 +630,8 @@ function gi_ajax_bulk_fix_prefecture_municipalities() {
                 ]
             ]
         ]);
+        
+        error_log('Bulk Fix: Found ' . $grants_query->found_posts . ' prefecture-level grants');
         
         $fixed_count = 0;
         $error_count = 0;
@@ -692,6 +706,8 @@ function gi_ajax_bulk_fix_prefecture_municipalities() {
             }
             wp_reset_postdata();
         }
+        
+        error_log("Bulk Fix: Completed - Fixed: {$fixed_count}, Errors: {$error_count}");
         
         wp_send_json_success([
             'message' => "一括修正完了: 修正 {$fixed_count} 件, エラー {$error_count} 件",
