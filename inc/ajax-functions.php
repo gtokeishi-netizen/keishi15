@@ -80,6 +80,9 @@ add_action('wp_ajax_nopriv_gi_generate_checklist', 'gi_ajax_generate_checklist')
 add_action('wp_ajax_gi_compare_grants', 'gi_ajax_compare_grants');
 add_action('wp_ajax_nopriv_gi_compare_grants', 'gi_ajax_compare_grants');
 
+// 市町村データ初期化機能
+add_action('wp_ajax_gi_initialize_municipalities', 'gi_ajax_initialize_municipalities');
+
 /**
  * =============================================================================
  * 主要なAJAXハンドラー関数 - 完全版
@@ -587,7 +590,7 @@ function gi_format_grant_result($post_id, $relevance_score = 0.8) {
         'amount' => get_post_meta($post_id, 'max_amount', true) ?: '未定',
         'deadline' => get_post_meta($post_id, 'deadline', true) ?: '随時',
         'organization' => get_post_meta($post_id, 'organization', true) ?: '未定',
-        'success_rate' => get_post_meta($post_id, 'grant_success_rate', true) ?: null,
+        'success_rate' => gi_get_field_safe('adoption_rate', $post_id, 0) ?: null,
         'featured' => get_post_meta($post_id, 'is_featured', true) == '1',
         'application_status' => get_post_meta($post_id, 'application_status', true) ?: 'active',
         'categories' => wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names']),
@@ -721,7 +724,7 @@ function gi_get_grant_details($post_id) {
         'application_requirements' => get_post_meta($post_id, 'application_requirements', true),
         'eligible_expenses' => get_post_meta($post_id, 'eligible_expenses', true),
         'application_process' => get_post_meta($post_id, 'application_process', true),
-        'success_rate' => get_post_meta($post_id, 'grant_success_rate', true),
+        'success_rate' => gi_get_field_safe('adoption_rate', $post_id, 0),
         'categories' => wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names'])
     ];
 }
@@ -991,35 +994,56 @@ function gi_ajax_get_municipalities_for_prefectures() {
             if (!$prefecture_term) continue;
             
             $pref_name = $prefecture_term->name;
+            $pref_municipalities = [];
             
-            // この都道府県の市町村データを取得
-            if (function_exists('gi_get_municipalities_by_prefecture')) {
-                $municipalities = gi_get_municipalities_by_prefecture($pref_slug);
-                $pref_municipalities = [];
+            // 1. まず既存の市町村タクソノミーから取得を試行
+            $existing_municipalities = get_terms([
+                'taxonomy' => 'grant_municipality',
+                'hide_empty' => false,
+                'meta_query' => [
+                    [
+                        'key' => 'prefecture_slug',
+                        'value' => $pref_slug,
+                        'compare' => '='
+                    ]
+                ]
+            ]);
+            
+            if (!empty($existing_municipalities) && !is_wp_error($existing_municipalities)) {
+                foreach ($existing_municipalities as $term) {
+                    $pref_municipalities[] = [
+                        'id' => $term->term_id,
+                        'name' => $term->name,
+                        'slug' => $term->slug,
+                        'count' => $term->count
+                    ];
+                }
+            }
+            
+            // 2. 既存データがない場合は、標準的な市町村リストから生成
+            if (empty($pref_municipalities)) {
+                $municipalities_list = gi_get_standard_municipalities_by_prefecture($pref_slug);
                 
-                // データベースに市町村タームが存在するかチェック・作成
-                foreach ($municipalities as $muni_name) {
+                foreach ($municipalities_list as $muni_name) {
                     $muni_slug = $pref_slug . '-' . sanitize_title($muni_name);
                     $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
                     
                     if (!$existing_term) {
-                        // 都道府県レベルの親タームを取得
-                        $parent_term = get_term_by('name', $pref_name, 'grant_municipality');
-                        $parent_id = $parent_term ? $parent_term->term_id : 0;
-                        
                         // 市町村タームを作成
                         $result = wp_insert_term(
                             $muni_name,
                             'grant_municipality',
                             [
                                 'slug' => $muni_slug,
-                                'description' => $pref_name . 'の' . $muni_name,
-                                'parent' => $parent_id
+                                'description' => $pref_name . '・' . $muni_name
                             ]
-        
                         );
                         
                         if (!is_wp_error($result)) {
+                            // 都道府県との関連付けメタデータを保存
+                            add_term_meta($result['term_id'], 'prefecture_slug', $pref_slug);
+                            add_term_meta($result['term_id'], 'prefecture_name', $pref_name);
+                            
                             $pref_municipalities[] = [
                                 'id' => $result['term_id'],
                                 'name' => $muni_name,
@@ -1028,6 +1052,12 @@ function gi_ajax_get_municipalities_for_prefectures() {
                             ];
                         }
                     } else {
+                        // 既存タームにメタデータが無い場合は追加
+                        if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                            add_term_meta($existing_term->term_id, 'prefecture_slug', $pref_slug);
+                            add_term_meta($existing_term->term_id, 'prefecture_name', $pref_name);
+                        }
+                        
                         $pref_municipalities[] = [
                             'id' => $existing_term->term_id,
                             'name' => $existing_term->name,
@@ -1036,10 +1066,10 @@ function gi_ajax_get_municipalities_for_prefectures() {
                         ];
                     }
                 }
-                
-                // Format data by prefecture for frontend
-                $municipalities_data[$pref_slug] = $pref_municipalities;
             }
+            
+            // Format data by prefecture for frontend
+            $municipalities_data[$pref_slug] = $pref_municipalities;
         }
         
         $total_municipalities = 0;
@@ -1057,6 +1087,40 @@ function gi_ajax_get_municipalities_for_prefectures() {
     } catch (Exception $e) {
         error_log('Get Municipalities Error: ' . $e->getMessage());
         wp_send_json_error(['message' => '市町村データの取得に失敗しました', 'debug' => WP_DEBUG ? $e->getMessage() : null]);
+    }
+}
+
+/**
+ * 市町村データ初期化 AJAX Handler
+ */
+function gi_ajax_initialize_municipalities() {
+    try {
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        // 管理者権限チェック（セキュリティのため）
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => '権限が不足しています']);
+            return;
+        }
+        
+        // 市町村データ初期化実行
+        $result = gi_initialize_all_municipalities();
+        
+        // 既存データの連携強化
+        gi_enhance_municipality_filtering();
+        
+        wp_send_json_success([
+            'created' => $result['created'],
+            'updated' => $result['updated'],
+            'message' => "市町村データの初期化が完了しました。新規作成: {$result['created']}件、更新: {$result['updated']}件"
+        ]);
+        
+    } catch (Exception $e) {
+        error_log('Initialize Municipalities Error: ' . $e->getMessage());
+        wp_send_json_error(['message' => '市町村データの初期化に失敗しました', 'debug' => WP_DEBUG ? $e->getMessage() : null]);
     }
 }
 
@@ -2051,7 +2115,7 @@ function gi_generate_grants_comparison($grant_ids) {
         $difficulty = gi_get_grant_difficulty_info($grant_id);
         
         // 成功率情報
-        $success_rate = gi_get_field_safe('grant_success_rate', $grant_id, 0);
+        $success_rate = gi_get_field_safe('adoption_rate', $grant_id, 0);
         
         $comparison_data[] = [
             'id' => $grant_id,
@@ -2098,7 +2162,7 @@ function gi_calculate_comparison_match_score($grant_id) {
     }
     
     // 成功率加算
-    $success_rate = gi_get_field_safe('grant_success_rate', $grant_id, 0);
+    $success_rate = gi_get_field_safe('adoption_rate', $grant_id, 0);
     if ($success_rate >= 50) {
         $base_score += 8;
     } elseif ($success_rate >= 30) {
@@ -2106,7 +2170,7 @@ function gi_calculate_comparison_match_score($grant_id) {
     }
     
     // 難易度調整
-    $difficulty = gi_get_field_safe('grant_difficulty', $grant_id, 'normal');
+    $difficulty = gi_get_field_safe('application_difficulty', $grant_id, 'normal');
     if ($difficulty === 'easy') {
         $base_score += 5;
     } elseif ($difficulty === 'hard') {
@@ -2120,7 +2184,7 @@ function gi_calculate_comparison_match_score($grant_id) {
  * 助成金難易度情報取得
  */
 function gi_get_grant_difficulty_info($grant_id) {
-    $difficulty = gi_get_field_safe('grant_difficulty', $grant_id, 'normal');
+    $difficulty = gi_get_field_safe('application_difficulty', $grant_id, 'normal');
     
     $difficulty_map = [
         'easy' => [
@@ -2497,8 +2561,8 @@ function gi_get_complete_grant_data($post_id) {
         // 対象・条件
         'grant_target' => '',
         'eligible_expenses' => '',
-        'grant_difficulty' => 'normal',
-        'grant_success_rate' => 0,
+        'application_difficulty' => 'normal',
+        'adoption_rate' => 0,
         'required_documents' => '',
         
         // 申請・連絡先
@@ -2543,7 +2607,7 @@ function gi_get_complete_grant_data($post_id) {
     // 計算フィールド
     $data['is_deadline_soon'] = gi_is_deadline_soon($data['deadline']);
     $data['application_status_label'] = gi_get_status_label($data['application_status']);
-    $data['difficulty_label'] = gi_get_difficulty_label($data['grant_difficulty']);
+    $data['difficulty_label'] = gi_get_difficulty_label($data['application_difficulty']);
     
     // キャッシュに保存
     $cache[$post_id] = $data;
@@ -2574,7 +2638,7 @@ function gi_get_all_grant_meta($post_id) {
     $meta_fields = [
         'ai_summary', 'organization', 'max_amount', 'max_amount_numeric',
         'deadline', 'application_status', 'grant_target', 'subsidy_rate',
-        'grant_difficulty', 'grant_success_rate', 'official_url', 'is_featured'
+        'application_difficulty', 'adoption_rate', 'official_url', 'is_featured'
     ];
     
     foreach ($meta_fields as $field) {
@@ -2783,6 +2847,7 @@ function gi_ajax_load_grants() {
     $search = sanitize_text_field($_POST['search'] ?? '');
     $categories = json_decode(stripslashes($_POST['categories'] ?? '[]'), true) ?: [];
     $prefectures = json_decode(stripslashes($_POST['prefectures'] ?? '[]'), true) ?: [];
+    $municipalities = json_decode(stripslashes($_POST['municipalities'] ?? '[]'), true) ?: [];
     $tags = json_decode(stripslashes($_POST['tags'] ?? '[]'), true) ?: [];
     $status = json_decode(stripslashes($_POST['status'] ?? '[]'), true) ?: [];
     $difficulty = json_decode(stripslashes($_POST['difficulty'] ?? '[]'), true) ?: [];
@@ -2862,6 +2927,15 @@ function gi_ajax_load_grants() {
             'taxonomy' => 'grant_prefecture',
             'field' => 'slug', 
             'terms' => $prefectures,
+            'operator' => 'IN'
+        ];
+    }
+    
+    if (!empty($municipalities)) {
+        $tax_query[] = [
+            'taxonomy' => 'grant_municipality',
+            'field' => 'slug',
+            'terms' => $municipalities,
             'operator' => 'IN'
         ];
     }
@@ -3514,7 +3588,7 @@ function gi_analyze_grant_characteristics($grant_details) {
     if (strpos($required_docs, '財務書類') !== false) $complexity_factors++;
     
     // 審査難易度
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
     if ($difficulty === 'hard') $complexity_factors += 2;
     elseif ($difficulty === 'normal') $complexity_factors += 1;
     
@@ -3566,7 +3640,7 @@ function gi_calculate_comprehensive_ai_score($grant_details) {
     
     // === 2. 成功確率要因 (重み: 30%) ===
     $success_score = 0;
-    $success_rate = floatval($grant_details['grant_success_rate'] ?? 0);
+    $success_rate = floatval($grant_details['adoption_rate'] ?? 0);
     
     if ($success_rate >= 70) $success_score = 30;
     elseif ($success_rate >= 50) $success_score = 25;
@@ -3576,7 +3650,7 @@ function gi_calculate_comprehensive_ai_score($grant_details) {
     
     // === 3. 申請難易度要因 (重み: 20%) ===
     $difficulty_score = 0;
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
     
     switch ($difficulty) {
         case 'easy': $difficulty_score = 20; break;
@@ -3639,7 +3713,7 @@ function gi_estimate_success_probability($grant_details) {
     $probability_factors['industry'] = $industry_multipliers[$characteristics['industry_type']] ?? 0;
     
     // === 3. 申請難易度による調整 ===
-    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
     $difficulty_adjustments = [
         'easy' => -0.05,   // 簡単 = 競争が激しい
         'normal' => 0.02,  // 普通 = バランス良い
@@ -4143,7 +4217,7 @@ function gi_calculate_strategic_fit_score($grant_details) {
     }
     
     // 高い成功率の場合は加点
-    $success_rate = floatval($grant_details['grant_success_rate'] ?? 0);
+    $success_rate = floatval($grant_details['adoption_rate'] ?? 0);
     if ($success_rate >= 60) {
         $score += 2;
     }
@@ -4186,7 +4260,7 @@ function gi_identify_risk_factors($grant_details) {
     }
     
     // 複雑性リスク
-    if (($grant_details['grant_difficulty'] ?? 'normal') === 'hard') {
+    if (($grant_details['application_difficulty'] ?? 'normal') === 'hard') {
         $risks[] = '申請要件の複雑性による不備リスク';
     }
     
@@ -4283,8 +4357,8 @@ function gi_calculate_grant_roi_potential($grant_details) {
     $confidence = 0.75;
     
     // 成功率による調整
-    if (!empty($grant_details['grant_success_rate'])) {
-        $success_rate = floatval($grant_details['grant_success_rate']);
+    if (!empty($grant_details['adoption_rate'])) {
+        $success_rate = floatval($grant_details['adoption_rate']);
         if ($success_rate >= 50) {
             $confidence += 0.1;
         } elseif ($success_rate < 20) {
@@ -4412,8 +4486,8 @@ function gi_calculate_probability_confidence($grant_details, $probability_factor
     if (!empty($grant_details['deadline'])) $data_completeness++;
     if (!empty($grant_details['grant_target'])) $data_completeness++;
     if (!empty($grant_details['organization'])) $data_completeness++;
-    if (!empty($grant_details['grant_success_rate'])) $data_completeness++;
-    if (!empty($grant_details['grant_difficulty'])) $data_completeness++;
+    if (!empty($grant_details['adoption_rate'])) $data_completeness++;
+    if (!empty($grant_details['application_difficulty'])) $data_completeness++;
     
     $completeness_ratio = $data_completeness / $total_fields;
     
@@ -4683,4 +4757,158 @@ function gi_calculate_self_funding_amount($grant_details) {
     $self_funding = $total_project_cost - $total_amount;
     
     return max(0, $self_funding);
+}
+
+/**
+ * =============================================================================
+ * 都道府県・市町村データ管理機能
+ * =============================================================================
+ */
+
+/**
+ * 都道府県別標準市町村リストを取得
+ */
+function gi_get_standard_municipalities_by_prefecture($pref_slug) {
+    // 主要都道府県の市町村リスト（簡略版）
+    $municipalities_data = [
+        'hokkaido' => ['札幌市', '函館市', '小樽市', '旭川市', '室蘭市', '釧路市', '帯広市', '北見市', '夕張市', '岩見沢市'],
+        'aomori' => ['青森市', '弘前市', '八戸市', '黒石市', '五所川原市', '十和田市', 'つがる市', '平川市'],
+        'iwate' => ['盛岡市', '宮古市', '大船渡市', '花巻市', '北上市', '久慈市', '遠野市', '一関市', '陸前高田市', '釜石市'],
+        'miyagi' => ['仙台市', '石巻市', '塩竈市', '気仙沼市', '白石市', '名取市', '角田市', '多賀城市', '岩沼市', '登米市'],
+        'akita' => ['秋田市', '能代市', '横手市', '大館市', '男鹿市', '湯沢市', '鹿角市', '由利本荘市', '潟上市', '大仙市'],
+        'yamagata' => ['山形市', '米沢市', '鶴岡市', '酒田市', '新庄市', '寒河江市', '上山市', '村山市', '長井市', '天童市'],
+        'fukushima' => ['福島市', '会津若松市', '郡山市', 'いわき市', '白河市', '須賀川市', '喜多方市', '相馬市', '二本松市', '田村市'],
+        'ibaraki' => ['水戸市', '日立市', '土浦市', '古河市', '石岡市', '結城市', '龍ケ崎市', '下妻市', '常総市', '常陸太田市'],
+        'tochigi' => ['宇都宮市', '足利市', '栃木市', '佐野市', '鹿沼市', '日光市', '小山市', '真岡市', '大田原市', '矢板市'],
+        'gunma' => ['前橋市', '高崎市', '桐生市', '伊勢崎市', '太田市', '沼田市', '館林市', '渋川市', '藤岡市', '富岡市'],
+        'saitama' => ['さいたま市', '川越市', '熊谷市', '川口市', '行田市', '秩父市', '所沢市', '飯能市', '加須市', '本庄市'],
+        'chiba' => ['千葉市', '銚子市', '市川市', '船橋市', '館山市', '木更津市', '松戸市', '野田市', '茂原市', '成田市'],
+        'tokyo' => ['千代田区', '中央区', '港区', '新宿区', '文京区', '台東区', '墨田区', '江東区', '品川区', '目黒区', '大田区', '世田谷区', '渋谷区', '中野区', '杉並区', '豊島区', '北区', '荒川区', '板橋区', '練馬区', '足立区', '葛飾区', '江戸川区'],
+        'kanagawa' => ['横浜市', '川崎市', '相模原市', '横須賀市', '平塚市', '鎌倉市', '藤沢市', '小田原市', '茅ヶ崎市', '逗子市'],
+        'niigata' => ['新潟市', '長岡市', '三条市', '柏崎市', '新発田市', '小千谷市', '加茂市', '十日町市', '見附市', '村上市'],
+        'toyama' => ['富山市', '高岡市', '魚津市', '氷見市', '滑川市', '黒部市', '砺波市', '小矢部市', '南砺市', '射水市'],
+        'ishikawa' => ['金沢市', '七尾市', '小松市', '輪島市', '珠洲市', '加賀市', '羽咋市', 'かほく市', '白山市', '能美市'],
+        'fukui' => ['福井市', '敦賀市', '小浜市', '大野市', '勝山市', '鯖江市', 'あわら市', '越前市'],
+        'yamanashi' => ['甲府市', '富士吉田市', '都留市', '山梨市', '大月市', '韮崎市', '南アルプス市', '北杜市', '甲斐市', '笛吹市'],
+        'nagano' => ['長野市', '松本市', '上田市', '岡谷市', '飯田市', '諏訪市', '須坂市', '小諸市', '伊那市', '駒ヶ根市'],
+        'gifu' => ['岐阜市', '大垣市', '高山市', '多治見市', '関市', '中津川市', '美濃市', '瑞浪市', '羽島市', '恵那市'],
+        'shizuoka' => ['静岡市', '浜松市', '沼津市', '熱海市', '三島市', '富士宮市', '伊東市', '島田市', '富士市', '磐田市'],
+        'aichi' => ['名古屋市', '豊橋市', '岡崎市', '一宮市', '瀬戸市', '半田市', '春日井市', '豊川市', '津島市', '碧南市'],
+        'mie' => ['津市', '四日市市', '伊勢市', '松阪市', '桑名市', '鈴鹿市', '名張市', '尾鷲市', '亀山市', '鳥羽市'],
+        'shiga' => ['大津市', '彦根市', '長浜市', '近江八幡市', '草津市', '守山市', '栗東市', '甲賀市', '野洲市', '湖南市'],
+        'kyoto' => ['京都市', '福知山市', '舞鶴市', '綾部市', '宇治市', '宮津市', '亀岡市', '城陽市', '向日市', '長岡京市'],
+        'osaka' => ['大阪市', '堺市', '岸和田市', '豊中市', '池田市', '吹田市', '泉大津市', '高槻市', '貝塚市', '守口市'],
+        'hyogo' => ['神戸市', '姫路市', '尼崎市', '明石市', '西宮市', '洲本市', '芦屋市', '伊丹市', '相生市', '豊岡市'],
+        'nara' => ['奈良市', '大和高田市', '大和郡山市', '天理市', '橿原市', '桜井市', '五條市', '御所市', '生駒市', '香芝市'],
+        'wakayama' => ['和歌山市', '海南市', '橋本市', '有田市', '御坊市', '田辺市', '新宮市', '紀の川市', '岩出市'],
+        'tottori' => ['鳥取市', '米子市', '倉吉市', '境港市'],
+        'shimane' => ['松江市', '浜田市', '出雲市', '益田市', '大田市', '安来市', '江津市', '雲南市'],
+        'okayama' => ['岡山市', '倉敷市', '津山市', '玉野市', '笠岡市', '井原市', '総社市', '高梁市', '新見市', '備前市'],
+        'hiroshima' => ['広島市', '呉市', '竹原市', '三原市', '尾道市', '福山市', '府中市', '三次市', '庄原市', '大竹市'],
+        'yamaguchi' => ['下関市', '宇部市', '山口市', '萩市', '防府市', '下松市', '岩国市', '光市', '長門市', '柳井市'],
+        'tokushima' => ['徳島市', '鳴門市', '小松島市', '阿南市', '吉野川市', '阿波市', '美馬市', '三好市'],
+        'kagawa' => ['高松市', '丸亀市', '坂出市', '善通寺市', '観音寺市', 'さぬき市', '東かがわ市', '三豊市'],
+        'ehime' => ['松山市', '今治市', '宇和島市', '八幡浜市', '新居浜市', '西条市', '大洲市', '伊予市', '四国中央市', '西予市'],
+        'kochi' => ['高知市', '室戸市', '安芸市', '南国市', '土佐市', '須崎市', '宿毛市', '土佐清水市', '四万十市', '香南市'],
+        'fukuoka' => ['北九州市', '福岡市', '大牟田市', '久留米市', '直方市', '飯塚市', '田川市', '柳川市', '八女市', '筑後市'],
+        'saga' => ['佐賀市', '唐津市', '鳥栖市', '多久市', '伊万里市', '武雄市', '鹿島市', '小城市', '嬉野市', '神埼市'],
+        'nagasaki' => ['長崎市', '佐世保市', '島原市', '諫早市', '大村市', '平戸市', '松浦市', '対馬市', '壱岐市', '五島市'],
+        'kumamoto' => ['熊本市', '八代市', '人吉市', '荒尾市', '水俣市', '玉名市', '山鹿市', '菊池市', '宇土市', '上天草市'],
+        'oita' => ['大分市', '別府市', '中津市', '日田市', '佐伯市', '臼杵市', '津久見市', '竹田市', '豊後高田市', '杵築市'],
+        'miyazaki' => ['宮崎市', '都城市', '延岡市', '日南市', '小林市', '日向市', '串間市', '西都市', 'えびの市'],
+        'kagoshima' => ['鹿児島市', '鹿屋市', '枕崎市', '阿久根市', '出水市', '指宿市', '西之表市', '垂水市', '薩摩川内市', '日置市'],
+        'okinawa' => ['那覇市', '宜野湾市', '石垣市', '浦添市', '名護市', '糸満市', '沖縄市', '豊見城市', 'うるま市', '宮古島市']
+    ];
+    
+    return $municipalities_data[$pref_slug] ?? [];
+}
+
+/**
+ * 市町村フィルタリングでの連携機能を改善
+ */
+function gi_enhance_municipality_filtering() {
+    // 既存の市町村タームに都道府県メタデータを追加
+    $municipalities = get_terms([
+        'taxonomy' => 'grant_municipality',
+        'hide_empty' => false
+    ]);
+    
+    foreach ($municipalities as $municipality) {
+        // 都道府県情報が無い場合は、スラッグから推定
+        if (!get_term_meta($municipality->term_id, 'prefecture_slug', true)) {
+            $slug_parts = explode('-', $municipality->slug);
+            if (count($slug_parts) >= 2) {
+                $pref_slug = $slug_parts[0];
+                $pref_term = get_term_by('slug', $pref_slug, 'grant_prefecture');
+                
+                if ($pref_term) {
+                    add_term_meta($municipality->term_id, 'prefecture_slug', $pref_slug);
+                    add_term_meta($municipality->term_id, 'prefecture_name', $pref_term->name);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Initialize all standard municipalities for all prefectures
+ * 全都道府県の標準市町村データを初期化
+ */
+function gi_initialize_all_municipalities() {
+    // 全都道府県のスラッグリスト
+    $all_prefectures = [
+        'hokkaido', 'aomori', 'iwate', 'miyagi', 'akita', 'yamagata', 'fukushima',
+        'ibaraki', 'tochigi', 'gunma', 'saitama', 'chiba', 'tokyo', 'kanagawa',
+        'niigata', 'toyama', 'ishikawa', 'fukui', 'yamanashi', 'nagano', 'gifu',
+        'shizuoka', 'aichi', 'mie', 'shiga', 'kyoto', 'osaka', 'hyogo', 'nara',
+        'wakayama', 'tottori', 'shimane', 'okayama', 'hiroshima', 'yamaguchi',
+        'tokushima', 'kagawa', 'ehime', 'kochi', 'fukuoka', 'saga', 'nagasaki',
+        'kumamoto', 'oita', 'miyazaki', 'kagoshima', 'okinawa'
+    ];
+    
+    $created_count = 0;
+    $updated_count = 0;
+    
+    foreach ($all_prefectures as $pref_slug) {
+        $pref_term = get_term_by('slug', $pref_slug, 'grant_prefecture');
+        if (!$pref_term) continue;
+        
+        $pref_name = $pref_term->name;
+        $municipalities_list = gi_get_standard_municipalities_by_prefecture($pref_slug);
+        
+        foreach ($municipalities_list as $muni_name) {
+            $muni_slug = $pref_slug . '-' . sanitize_title($muni_name);
+            $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
+            
+            if (!$existing_term) {
+                // 新規作成
+                $result = wp_insert_term(
+                    $muni_name,
+                    'grant_municipality',
+                    [
+                        'slug' => $muni_slug,
+                        'description' => $pref_name . '・' . $muni_name
+                    ]
+                );
+                
+                if (!is_wp_error($result)) {
+                    add_term_meta($result['term_id'], 'prefecture_slug', $pref_slug);
+                    add_term_meta($result['term_id'], 'prefecture_name', $pref_name);
+                    $created_count++;
+                }
+            } else {
+                // 既存タームのメタデータ更新
+                if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                    add_term_meta($existing_term->term_id, 'prefecture_slug', $pref_slug);
+                    add_term_meta($existing_term->term_id, 'prefecture_name', $pref_name);
+                    $updated_count++;
+                }
+            }
+        }
+    }
+    
+    return [
+        'created' => $created_count,
+        'updated' => $updated_count
+    ];
 }
