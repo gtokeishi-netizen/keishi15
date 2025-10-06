@@ -1336,8 +1336,8 @@ function gi_ajax_get_municipalities_for_prefecture() {
             } else if (function_exists('gi_get_standard_municipalities_by_prefecture')) {
                 // 2. 標準データから生成
                 $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
-            
-            foreach ($standard_municipalities as $muni_name) {
+                
+                foreach ($standard_municipalities as $muni_name) {
                 $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
                 $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
                 
@@ -1377,6 +1377,7 @@ function gi_ajax_get_municipalities_for_prefecture() {
                         'slug' => $existing_term->slug,
                         'count' => $existing_term->count
                     ];
+                }
                 }
             } else {
                 // 3. 最後のフォールバック: 都道府県名のみを返す
