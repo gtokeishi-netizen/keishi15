@@ -79,6 +79,9 @@ add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefectures', 'gi_ajax_get_
 add_action('wp_ajax_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
 add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
 
+// データ最適化機能
+add_action('wp_ajax_gi_optimize_location_data', 'gi_ajax_optimize_location_data');
+
 // AI チェックリスト生成機能
 add_action('wp_ajax_gi_generate_checklist', 'gi_ajax_generate_checklist');
 add_action('wp_ajax_nopriv_gi_generate_checklist', 'gi_ajax_generate_checklist');
@@ -1075,6 +1078,11 @@ function gi_ajax_get_municipalities_for_prefectures() {
                 }
             }
             
+            // Sort municipalities by name for consistent ordering
+            usort($pref_municipalities, function($a, $b) {
+                return strcoll($a['name'], $b['name']);
+            });
+            
             // Format data by prefecture for frontend
             $municipalities_data[$pref_slug] = $pref_municipalities;
         }
@@ -1094,6 +1102,131 @@ function gi_ajax_get_municipalities_for_prefectures() {
     } catch (Exception $e) {
         error_log('Get Municipalities Error: ' . $e->getMessage());
         wp_send_json_error(['message' => '市町村データの取得に失敗しました', 'debug' => WP_DEBUG ? $e->getMessage() : null]);
+    }
+}
+
+/**
+ * 単一都道府県に対応する市町村を取得 (フロントエンド用)
+ */
+function gi_ajax_get_municipalities_for_prefecture() {
+    try {
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        $prefecture_slug = sanitize_text_field($_POST['prefecture_slug'] ?? '');
+        
+        if (empty($prefecture_slug)) {
+            wp_send_json_error(['message' => '都道府県が指定されていません']);
+            return;
+        }
+        
+        // デバッグ情報をログに記録
+        error_log("Single Prefecture Municipality Request: {$prefecture_slug}");
+        
+        // 都道府県の存在確認
+        $prefecture_term = get_term_by('slug', $prefecture_slug, 'grant_prefecture');
+        if (!$prefecture_term) {
+            wp_send_json_error(['message' => '指定された都道府県が見つかりません']);
+            return;
+        }
+        
+        // 既存の市町村データを取得
+        $municipalities = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => 'prefecture_slug',
+                    'value' => $prefecture_slug,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+        
+        $municipalities_data = [];
+        
+        if (!empty($municipalities) && !is_wp_error($municipalities)) {
+            foreach ($municipalities as $term) {
+                $municipalities_data[] = [
+                    'id' => $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                    'count' => $term->count
+                ];
+            }
+        } else {
+            // 既存データがない場合は標準データから生成
+            $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
+            
+            foreach ($standard_municipalities as $muni_name) {
+                $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
+                $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
+                
+                if (!$existing_term) {
+                    // 新しい市町村タームを作成
+                    $result = wp_insert_term(
+                        $muni_name,
+                        'grant_municipality',
+                        [
+                            'slug' => $muni_slug,
+                            'description' => $prefecture_term->name . '・' . $muni_name
+                        ]
+                    );
+                    
+                    if (!is_wp_error($result)) {
+                        // 都道府県メタデータを追加
+                        add_term_meta($result['term_id'], 'prefecture_slug', $prefecture_slug);
+                        add_term_meta($result['term_id'], 'prefecture_name', $prefecture_term->name);
+                        
+                        $municipalities_data[] = [
+                            'id' => $result['term_id'],
+                            'name' => $muni_name,
+                            'slug' => $muni_slug,
+                            'count' => 0
+                        ];
+                    }
+                } else {
+                    // 既存タームのメタデータを確認・更新
+                    if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                        add_term_meta($existing_term->term_id, 'prefecture_slug', $prefecture_slug);
+                        add_term_meta($existing_term->term_id, 'prefecture_name', $prefecture_term->name);
+                    }
+                    
+                    $municipalities_data[] = [
+                        'id' => $existing_term->term_id,
+                        'name' => $existing_term->name,
+                        'slug' => $existing_term->slug,
+                        'count' => $existing_term->count
+                    ];
+                }
+            }
+        }
+        
+        // 名前順にソート
+        usort($municipalities_data, function($a, $b) {
+            return strcoll($a['name'], $b['name']);
+        });
+        
+        wp_send_json_success([
+            'municipalities' => $municipalities_data,
+            'prefecture' => [
+                'slug' => $prefecture_slug,
+                'name' => $prefecture_term->name
+            ],
+            'count' => count($municipalities_data),
+            'message' => count($municipalities_data) . '件の市町村を取得しました'
+        ]);
+        
+    } catch (Exception $e) {
+        error_log('Get Single Prefecture Municipalities Error: ' . $e->getMessage());
+        wp_send_json_error([
+            'message' => '市町村データの取得に失敗しました',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
     }
 }
 
@@ -4791,64 +4924,6 @@ function gi_calculate_self_funding_amount($grant_details) {
  */
 
 /**
- * 都道府県別標準市町村リストを取得
- */
-function gi_get_standard_municipalities_by_prefecture($pref_slug) {
-    // 主要都道府県の市町村リスト（簡略版）
-    $municipalities_data = [
-        'hokkaido' => ['札幌市', '函館市', '小樽市', '旭川市', '室蘭市', '釧路市', '帯広市', '北見市', '夕張市', '岩見沢市'],
-        'aomori' => ['青森市', '弘前市', '八戸市', '黒石市', '五所川原市', '十和田市', 'つがる市', '平川市'],
-        'iwate' => ['盛岡市', '宮古市', '大船渡市', '花巻市', '北上市', '久慈市', '遠野市', '一関市', '陸前高田市', '釜石市'],
-        'miyagi' => ['仙台市', '石巻市', '塩竈市', '気仙沼市', '白石市', '名取市', '角田市', '多賀城市', '岩沼市', '登米市'],
-        'akita' => ['秋田市', '能代市', '横手市', '大館市', '男鹿市', '湯沢市', '鹿角市', '由利本荘市', '潟上市', '大仙市'],
-        'yamagata' => ['山形市', '米沢市', '鶴岡市', '酒田市', '新庄市', '寒河江市', '上山市', '村山市', '長井市', '天童市'],
-        'fukushima' => ['福島市', '会津若松市', '郡山市', 'いわき市', '白河市', '須賀川市', '喜多方市', '相馬市', '二本松市', '田村市'],
-        'ibaraki' => ['水戸市', '日立市', '土浦市', '古河市', '石岡市', '結城市', '龍ケ崎市', '下妻市', '常総市', '常陸太田市'],
-        'tochigi' => ['宇都宮市', '足利市', '栃木市', '佐野市', '鹿沼市', '日光市', '小山市', '真岡市', '大田原市', '矢板市'],
-        'gunma' => ['前橋市', '高崎市', '桐生市', '伊勢崎市', '太田市', '沼田市', '館林市', '渋川市', '藤岡市', '富岡市'],
-        'saitama' => ['さいたま市', '川越市', '熊谷市', '川口市', '行田市', '秩父市', '所沢市', '飯能市', '加須市', '本庄市'],
-        'chiba' => ['千葉市', '銚子市', '市川市', '船橋市', '館山市', '木更津市', '松戸市', '野田市', '茂原市', '成田市'],
-        'tokyo' => ['千代田区', '中央区', '港区', '新宿区', '文京区', '台東区', '墨田区', '江東区', '品川区', '目黒区', '大田区', '世田谷区', '渋谷区', '中野区', '杉並区', '豊島区', '北区', '荒川区', '板橋区', '練馬区', '足立区', '葛飾区', '江戸川区'],
-        'kanagawa' => ['横浜市', '川崎市', '相模原市', '横須賀市', '平塚市', '鎌倉市', '藤沢市', '小田原市', '茅ヶ崎市', '逗子市'],
-        'niigata' => ['新潟市', '長岡市', '三条市', '柏崎市', '新発田市', '小千谷市', '加茂市', '十日町市', '見附市', '村上市'],
-        'toyama' => ['富山市', '高岡市', '魚津市', '氷見市', '滑川市', '黒部市', '砺波市', '小矢部市', '南砺市', '射水市'],
-        'ishikawa' => ['金沢市', '七尾市', '小松市', '輪島市', '珠洲市', '加賀市', '羽咋市', 'かほく市', '白山市', '能美市'],
-        'fukui' => ['福井市', '敦賀市', '小浜市', '大野市', '勝山市', '鯖江市', 'あわら市', '越前市'],
-        'yamanashi' => ['甲府市', '富士吉田市', '都留市', '山梨市', '大月市', '韮崎市', '南アルプス市', '北杜市', '甲斐市', '笛吹市'],
-        'nagano' => ['長野市', '松本市', '上田市', '岡谷市', '飯田市', '諏訪市', '須坂市', '小諸市', '伊那市', '駒ヶ根市'],
-        'gifu' => ['岐阜市', '大垣市', '高山市', '多治見市', '関市', '中津川市', '美濃市', '瑞浪市', '羽島市', '恵那市'],
-        'shizuoka' => ['静岡市', '浜松市', '沼津市', '熱海市', '三島市', '富士宮市', '伊東市', '島田市', '富士市', '磐田市'],
-        'aichi' => ['名古屋市', '豊橋市', '岡崎市', '一宮市', '瀬戸市', '半田市', '春日井市', '豊川市', '津島市', '碧南市'],
-        'mie' => ['津市', '四日市市', '伊勢市', '松阪市', '桑名市', '鈴鹿市', '名張市', '尾鷲市', '亀山市', '鳥羽市'],
-        'shiga' => ['大津市', '彦根市', '長浜市', '近江八幡市', '草津市', '守山市', '栗東市', '甲賀市', '野洲市', '湖南市'],
-        'kyoto' => ['京都市', '福知山市', '舞鶴市', '綾部市', '宇治市', '宮津市', '亀岡市', '城陽市', '向日市', '長岡京市'],
-        'osaka' => ['大阪市', '堺市', '岸和田市', '豊中市', '池田市', '吹田市', '泉大津市', '高槻市', '貝塚市', '守口市'],
-        'hyogo' => ['神戸市', '姫路市', '尼崎市', '明石市', '西宮市', '洲本市', '芦屋市', '伊丹市', '相生市', '豊岡市'],
-        'nara' => ['奈良市', '大和高田市', '大和郡山市', '天理市', '橿原市', '桜井市', '五條市', '御所市', '生駒市', '香芝市'],
-        'wakayama' => ['和歌山市', '海南市', '橋本市', '有田市', '御坊市', '田辺市', '新宮市', '紀の川市', '岩出市'],
-        'tottori' => ['鳥取市', '米子市', '倉吉市', '境港市'],
-        'shimane' => ['松江市', '浜田市', '出雲市', '益田市', '大田市', '安来市', '江津市', '雲南市'],
-        'okayama' => ['岡山市', '倉敷市', '津山市', '玉野市', '笠岡市', '井原市', '総社市', '高梁市', '新見市', '備前市'],
-        'hiroshima' => ['広島市', '呉市', '竹原市', '三原市', '尾道市', '福山市', '府中市', '三次市', '庄原市', '大竹市'],
-        'yamaguchi' => ['下関市', '宇部市', '山口市', '萩市', '防府市', '下松市', '岩国市', '光市', '長門市', '柳井市'],
-        'tokushima' => ['徳島市', '鳴門市', '小松島市', '阿南市', '吉野川市', '阿波市', '美馬市', '三好市'],
-        'kagawa' => ['高松市', '丸亀市', '坂出市', '善通寺市', '観音寺市', 'さぬき市', '東かがわ市', '三豊市'],
-        'ehime' => ['松山市', '今治市', '宇和島市', '八幡浜市', '新居浜市', '西条市', '大洲市', '伊予市', '四国中央市', '西予市'],
-        'kochi' => ['高知市', '室戸市', '安芸市', '南国市', '土佐市', '須崎市', '宿毛市', '土佐清水市', '四万十市', '香南市'],
-        'fukuoka' => ['北九州市', '福岡市', '大牟田市', '久留米市', '直方市', '飯塚市', '田川市', '柳川市', '八女市', '筑後市'],
-        'saga' => ['佐賀市', '唐津市', '鳥栖市', '多久市', '伊万里市', '武雄市', '鹿島市', '小城市', '嬉野市', '神埼市'],
-        'nagasaki' => ['長崎市', '佐世保市', '島原市', '諫早市', '大村市', '平戸市', '松浦市', '対馬市', '壱岐市', '五島市'],
-        'kumamoto' => ['熊本市', '八代市', '人吉市', '荒尾市', '水俣市', '玉名市', '山鹿市', '菊池市', '宇土市', '上天草市'],
-        'oita' => ['大分市', '別府市', '中津市', '日田市', '佐伯市', '臼杵市', '津久見市', '竹田市', '豊後高田市', '杵築市'],
-        'miyazaki' => ['宮崎市', '都城市', '延岡市', '日南市', '小林市', '日向市', '串間市', '西都市', 'えびの市'],
-        'kagoshima' => ['鹿児島市', '鹿屋市', '枕崎市', '阿久根市', '出水市', '指宿市', '西之表市', '垂水市', '薩摩川内市', '日置市'],
-        'okinawa' => ['那覇市', '宜野湾市', '石垣市', '浦添市', '名護市', '糸満市', '沖縄市', '豊見城市', 'うるま市', '宮古島市']
-    ];
-    
-    return $municipalities_data[$pref_slug] ?? [];
-}
-
-/**
  * 市町村フィルタリングでの連携機能を改善
  */
 function gi_enhance_municipality_filtering() {
@@ -4994,6 +5069,40 @@ function gi_ajax_get_municipalities_for_prefecture() {
     } catch (Exception $e) {
         wp_send_json_error([
             'message' => '市町村データの取得中にエラーが発生しました',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
+    }
+}
+
+/**
+ * 都道府県・市町村データ最適化 AJAX Handler
+ */
+function gi_ajax_optimize_location_data() {
+    try {
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        // 管理者権限チェック
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => '権限が不足しています']);
+            return;
+        }
+        
+        // データ最適化実行
+        $result = gi_run_location_data_optimization();
+        
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+        
+    } catch (Exception $e) {
+        error_log('Location Data Optimization AJAX Error: ' . $e->getMessage());
+        wp_send_json_error([
+            'message' => 'データ最適化中にエラーが発生しました',
             'debug' => WP_DEBUG ? $e->getMessage() : null
         ]);
     }
