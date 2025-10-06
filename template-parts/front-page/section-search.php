@@ -239,16 +239,13 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 <span class="nav-tab-icon">🔍</span>
             </button>
             <button class="nav-tab" data-tab="results">
-                <span class="nav-tab-icon">📋</span>
-            </button>
-            <button class="nav-tab" data-tab="favorites">
                 <span class="nav-tab-icon">⭐</span>
             </button>
         </div>
         
         <!-- Floating Results Button (Mobile Only) -->
         <button class="results-fab" id="mobile-results-fab">
-            📋
+            ⭐
         </button>
         
     </div>
@@ -696,17 +693,17 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     grid-template-columns: 45% 55%;
     gap: 32px;
     margin-bottom: 48px;
-    min-height: 900px;
+    min-height: 1400px;
 }
 
-/* AI Assistant Panel - Expanded Height for Better Chat History Visibility */
+/* AI Assistant Panel - Ultra Maximum Height for Better Chat History Visibility */
 .ai-assistant-panel {
     background: #fafafa;
     border-radius: 20px;
     border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 850px;
+    height: 1300px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
 }
@@ -919,7 +916,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     overflow: hidden;
 }
 
-/* Chat Messages - Expanded Height for Better Conversation History */
+/* Chat Messages - Ultra Maximum Height for Better Conversation History */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -927,8 +924,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-height: 500px;
-    max-height: 600px;
+    min-height: 800px;
+    max-height: 1000px;
 }
 
 .message {
@@ -1076,13 +1073,13 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-color: #000;
 }
 
-/* Search Results Panel - Expanded Height for Better Results Display */
+/* Search Results Panel - Ultra Maximum Height for Better Results Display */
 .search-results-panel {
     background: #fafafa;
     border-radius: 20px;
     padding: 20px;
     border: 2px solid #e0e0e0;
-    height: 850px;
+    height: 1300px;
     overflow-y: auto;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
@@ -2233,11 +2230,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         display: none;
     }
     
-    /* Mobile AI Assistant Panel - Expanded for Better Chat History */
+    /* Mobile AI Assistant Panel - Ultra Maximum Height for Better Chat History */
     .ai-assistant-panel {
-        height: 400px;
-        min-height: 400px;
-        max-height: 400px;
+        height: 600px;
+        min-height: 600px;
+        max-height: 600px;
         order: 1;
         position: relative;
         overflow: hidden;
@@ -2339,12 +2336,12 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         border-width: 1px;
     }
     
-    /* Mobile Search Results Panel - Expanded for Better Results Display */
+    /* Mobile Search Results Panel - Ultra Maximum Height for Better Results Display */
     .search-results-panel {
         order: 2;
-        height: 400px;
-        min-height: 400px;
-        max-height: 400px;
+        height: 600px;
+        min-height: 600px;
+        max-height: 600px;
         padding: 12px;
         position: relative;
         overflow: hidden;
