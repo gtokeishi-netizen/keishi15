@@ -3353,6 +3353,11 @@ $region_mapping = [
         showLoading();
         
         try {
+            // デバッグログ
+            console.log('Loading grants with filters:', state.filters);
+            console.log('AJAX URL:', config.ajaxUrl);
+            console.log('Nonce:', config.nonce);
+            
             const response = await fetch(config.ajaxUrl, {
                 method: 'POST',
                 headers: {
@@ -3385,6 +3390,14 @@ $region_mapping = [
             }
         } catch (error) {
             console.error('Error loading grants:', error);
+            console.error('Fetch URL:', config.ajaxUrl);
+            console.error('Request data:', {
+                action: 'gi_load_grants',
+                nonce: config.nonce,
+                search: state.filters.search,
+                categories: JSON.stringify(state.filters.categories),
+                prefectures: JSON.stringify(state.filters.prefectures)
+            });
             showError();
         } finally {
             state.isLoading = false;

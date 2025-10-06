@@ -3062,7 +3062,7 @@ if (!$ai_features_js_loaded):
 // ============================================================================
 
 // AJAX URL設定
-const ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
 
 // グローバル比較リスト
 window.compareList = window.compareList || [];
@@ -3102,13 +3102,13 @@ function openGrantChecklist(button) {
     document.body.appendChild(modal);
     
     // AJAX でチェックリスト取得
-    fetch(ajaxurl, {
+    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             action: 'gi_generate_checklist',
             post_id: postId,
-            nonce: '<?php echo wp_create_nonce("gi_ai_search_nonce"); ?>'
+            nonce: '<?php echo wp_create_nonce("gi_ajax_nonce"); ?>'
         })
     })
     .then(res => res.json())
@@ -3225,14 +3225,18 @@ function showCompareModal() {
     document.body.appendChild(modal);
     
     // AJAX で比較データ取得
-    fetch(ajaxurl, {
+    console.log('Comparing grants:', window.compareList);
+    
+    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            action: 'gi_compare_grants',
-            grant_ids: window.compareList.map(g => g.id),
-            nonce: '<?php echo wp_create_nonce("gi_ai_search_nonce"); ?>'
-        })
+        body: (() => {
+            const params = new URLSearchParams();
+            params.append('action', 'gi_compare_grants');
+            params.append('nonce', '<?php echo wp_create_nonce("gi_ajax_nonce"); ?>');
+            window.compareList.forEach(g => params.append('grant_ids[]', g.id));
+            return params;
+        })()
     })
     .then(res => {
         if (!res.ok) {
@@ -3293,6 +3297,8 @@ function showCompareModal() {
     })
     .catch(error => {
         console.error('比較エラー:', error);
+        console.error('Compare list:', window.compareList);
+        console.error('AJAX URL:', '<?php echo admin_url('admin-ajax.php'); ?>');
         
         modal.querySelector('.ai-compare-loading').style.display = 'none';
         modal.querySelector('.ai-compare-result').style.display = 'block';

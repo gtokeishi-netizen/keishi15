@@ -54,8 +54,10 @@ add_action('wp_ajax_gi_toggle_favorite', 'gi_ajax_toggle_favorite');
 add_action('wp_ajax_nopriv_gi_toggle_favorite', 'gi_ajax_toggle_favorite');
 
 // 助成金ロード機能（フィルター・検索）
-add_action('wp_ajax_gi_load_grants', 'gi_ajax_load_grants');
-add_action('wp_ajax_nopriv_gi_load_grants', 'gi_ajax_load_grants');
+add_action('wp_ajax_gi_load_grants', 'gi_load_grants');
+add_action('wp_ajax_nopriv_gi_load_grants', 'gi_load_grants');
+add_action('wp_ajax_gi_ajax_load_grants', 'gi_ajax_load_grants');
+add_action('wp_ajax_nopriv_gi_ajax_load_grants', 'gi_ajax_load_grants');
 
 // チャット履歴機能
 add_action('wp_ajax_gi_get_chat_history', 'gi_ajax_get_chat_history');
@@ -2041,6 +2043,11 @@ function gi_generate_grant_checklist($post_id) {
  */
 function gi_ajax_compare_grants() {
     try {
+        // デバッグログ
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('gi_ajax_compare_grants called with: ' . print_r($_POST, true));
+        }
+        
         // セキュリティ検証
         if (!gi_verify_ajax_nonce()) {
             wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
@@ -2837,6 +2844,11 @@ if (!function_exists('gi_render_card_unified')) {
  */
 function gi_ajax_load_grants() {
     try {
+        // デバッグログ
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('gi_ajax_load_grants called with: ' . print_r($_POST, true));
+        }
+        
         // nonceチェック
         if (!wp_verify_nonce($_POST['nonce'] ?? '', 'gi_ajax_nonce')) {
             wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
@@ -3325,8 +3337,16 @@ function gi_ajax_load_grants() {
  * アーカイブページの補助金読み込み（市町村対応）
  */
 function gi_load_grants() {
+    // デバッグログ
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('gi_load_grants called with: ' . print_r($_POST, true));
+    }
+    
     // Nonce verification
-    check_ajax_referer('gi_ajax_nonce', 'nonce');
+    if (!gi_verify_ajax_nonce()) {
+        wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
+        return;
+    }
     
     // Get parameters
     $search = sanitize_text_field($_POST['search'] ?? '');
