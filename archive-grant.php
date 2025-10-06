@@ -2694,6 +2694,13 @@ if (!empty($search_params['prefecture'])) {
 (function() {
     'use strict';
     
+    // 重複実行防止
+    if (window.CleanGrantsInitialized) {
+        console.log('CleanGrants already initialized, skipping...');
+        return;
+    }
+    window.CleanGrantsInitialized = true;
+    
     // Configuration
     const config = {
         ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
@@ -3737,13 +3744,22 @@ function loadMunicipalitiesForTopFilter(prefectureSlug) {
         return;
     }
     
+    // URLデコードしてスラッグを正規化
+    let decodedPrefectureSlug = prefectureSlug;
+    try {
+        decodedPrefectureSlug = decodeURIComponent(prefectureSlug);
+        console.log('Decoded prefecture slug:', decodedPrefectureSlug);
+    } catch (e) {
+        console.log('Prefecture slug decode failed, using original:', prefectureSlug);
+    }
+    
     // AJAXで市町村データを取得（改善版）
-    console.log('Loading municipalities for prefecture:', prefectureSlug);
+    console.log('Loading municipalities for prefecture:', decodedPrefectureSlug);
     
     const requestData = {
         action: 'gi_get_municipalities_for_prefecture',
         nonce: '<?php echo wp_create_nonce('gi_ajax_nonce'); ?>',
-        prefecture_slug: prefectureSlug
+        prefecture_slug: decodedPrefectureSlug
     };
     
     console.log('AJAX request data:', requestData);
@@ -3808,7 +3824,15 @@ function loadMunicipalitiesForTopFilter(prefectureSlug) {
 function loadMunicipalitiesForSidebarFilter() {
     const selectedPrefectures = Array.from(
         document.querySelectorAll('.prefecture-checkbox:checked')
-    ).map(cb => cb.value);
+    ).map(cb => {
+        // URLデコードしてスラッグを正規化
+        try {
+            return decodeURIComponent(cb.value);
+        } catch (e) {
+            console.log('Prefecture slug decode failed for:', cb.value);
+            return cb.value;
+        }
+    });
     
     const municipalityContainer = document.getElementById('municipality-list-container');
     if (!municipalityContainer) return;

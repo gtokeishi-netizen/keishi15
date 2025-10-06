@@ -319,22 +319,24 @@ function gi_register_taxonomies() {
         )
     ));
     
-    // 都道府県タクソノミー
+    // 都道府県タクソノミー（市町村の親として階層化）
     register_taxonomy('grant_prefecture', 'grant', array(
         'labels' => array(
             'name' => '対象都道府県',
             'singular_name' => '都道府県',
             'search_items' => '都道府県を検索',
             'all_items' => 'すべての都道府県',
+            'parent_item' => '親都道府県',
+            'parent_item_colon' => '親都道府県:',
             'edit_item' => '都道府県を編集',
             'update_item' => '都道府県を更新',
             'add_new_item' => '新しい都道府県を追加',
             'new_item_name' => '新しい都道府県名'
         ),
-        'description' => '助成金・補助金の対象都道府県を管理します',
+        'description' => '助成金・補助金の対象都道府県を管理します（市町村の親分類）',
         'public' => true,
         'publicly_queryable' => true,
-        'hierarchical' => false,
+        'hierarchical' => true, // 階層構造を有効化（市町村の親として）
         'show_ui' => true,
         'show_in_menu' => true,
         'show_in_nav_menus' => true,
@@ -377,22 +379,24 @@ function gi_register_taxonomies() {
         )
     ));
     
-    // 市町村タクソノミー
+    // 市町村タクソノミー（都道府県の子として階層化）
     register_taxonomy('grant_municipality', 'grant', array(
         'labels' => array(
             'name' => '対象市町村',
             'singular_name' => '市町村',
             'search_items' => '市町村を検索',
             'all_items' => 'すべての市町村',
+            'parent_item' => '親都道府県',
+            'parent_item_colon' => '親都道府県:',
             'edit_item' => '市町村を編集',
             'update_item' => '市町村を更新',
             'add_new_item' => '新しい市町村を追加',
             'new_item_name' => '新しい市町村名'
         ),
-        'description' => '助成金・補助金の対象市町村を管理します',
+        'description' => '助成金・補助金の対象市町村を管理します（都道府県の子分類）',
         'public' => true,
         'publicly_queryable' => true,
-        'hierarchical' => true, // 都道府県 > 市町村の階層構造対応
+        'hierarchical' => true, // 都道府県との親子関係を有効化
         'show_ui' => true,
         'show_in_menu' => true,
         'show_in_nav_menus' => true,
@@ -872,6 +876,10 @@ function gi_force_https_content($content) {
 }
 add_filter('the_content', 'gi_force_https_content');
 add_filter('widget_text', 'gi_force_https_content');
+
+// 追加のMixed Content対策
+add_filter('wp_get_attachment_image_attributes', 'gi_force_https_image_attributes');
+add_filter('wp_calculate_image_srcset', 'gi_force_https_srcset');
 
 /**
  * カスタマイザーでのMixed Content警告抑制
@@ -1557,3 +1565,49 @@ function gi_optimization_admin_page() {
     </div>
     <?php
 }
+
+/**
+ * 追加のMixed Content対策関数
+ */
+
+/**
+ * 画像属性のHTTPS強制化
+ */
+function gi_force_https_image_attributes($attr) {
+    if (is_ssl() && isset($attr['src'])) {
+        $attr['src'] = str_replace('http://', 'https://', $attr['src']);
+    }
+    if (is_ssl() && isset($attr['srcset'])) {
+        $attr['srcset'] = str_replace('http://', 'https://', $attr['srcset']);
+    }
+    return $attr;
+}
+
+/**
+ * srcsetのHTTPS強制化
+ */
+function gi_force_https_srcset($sources) {
+    if (is_ssl() && is_array($sources)) {
+        foreach ($sources as &$source) {
+            if (isset($source['url'])) {
+                $source['url'] = str_replace('http://', 'https://', $source['url']);
+            }
+        }
+    }
+    return $sources;
+}
+
+/**
+ * グローバルMixed Content修正
+ */
+function gi_global_https_fix() {
+    if (is_ssl()) {
+        ob_start();
+        add_action('wp_footer', function() {
+            $content = ob_get_clean();
+            $content = str_replace('http://', 'https://', $content);
+            echo $content;
+        }, 999);
+    }
+}
+add_action('init', 'gi_global_https_fix', 1);
