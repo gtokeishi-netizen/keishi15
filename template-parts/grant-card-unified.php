@@ -63,7 +63,7 @@ $grant_data = array(
     'region_notes' => get_field('region_notes', $post_id) ?: '',
     'required_documents' => get_field('required_documents', $post_id) ?: '',
     'adoption_rate' => floatval(get_field('adoption_rate', $post_id)),
-    'application_difficulty' => get_field('application_difficulty', $post_id) ?: 'normal',
+    'grant_difficulty' => get_field('grant_difficulty', $post_id) ?: 'normal',
     'target_expenses' => get_field('target_expenses', $post_id) ?: '',
     'subsidy_rate' => get_field('subsidy_rate', $post_id) ?: '',
     
@@ -84,7 +84,7 @@ $application_status = $grant_data['application_status'];
 $organization = $grant_data['organization'];
 $grant_target = $grant_data['grant_target'];
 $subsidy_rate = $grant_data['subsidy_rate'];
-$grant_difficulty = $grant_data['application_difficulty'];
+$grant_difficulty = $grant_data['grant_difficulty'];
 $grant_success_rate = $grant_data['adoption_rate'];
 $official_url = $grant_data['official_url'];
 $eligible_expenses = $grant_data['target_expenses'];
@@ -185,7 +185,7 @@ $difficulty_configs = array(
     'hard' => array('label' => '難しい', 'dots' => 3, 'color' => '#d97706'),
     'very_hard' => array('label' => '非常に困難', 'dots' => 4, 'color' => '#dc2626')
 );
-$difficulty = $grant_data['application_difficulty'];
+$difficulty = $grant_data['grant_difficulty'];
 $difficulty_data = $difficulty_configs[$difficulty] ?? $difficulty_configs['normal'];
 
 // CSS・JSの重複防止

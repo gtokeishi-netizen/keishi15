@@ -51,7 +51,7 @@ $grant_data = array(
     'region_notes' => get_field('region_notes', $post_id) ?: '',            // Y列
     'required_documents' => get_field('required_documents', $post_id) ?: '', // Z列
     'adoption_rate' => floatval(get_field('adoption_rate', $post_id)),       // AA列
-    'application_difficulty' => get_field('application_difficulty', $post_id) ?: 'normal', // AB列
+    'grant_difficulty' => get_field('grant_difficulty', $post_id) ?: 'normal', // AB列
     'target_expenses' => get_field('target_expenses', $post_id) ?: '',       // AC列
     'subsidy_rate' => get_field('subsidy_rate', $post_id) ?: '',            // AD列
     
@@ -144,7 +144,7 @@ $difficulty_configs = array(
     'hard' => array('label' => '難しい', 'dots' => 3, 'emoji' => '🟠'),
     'very_hard' => array('label' => '非常に困難', 'dots' => 4, 'emoji' => '🔴')
 );
-$difficulty = $grant_data['application_difficulty'];
+$difficulty = $grant_data['grant_difficulty'];
 $difficulty_data = $difficulty_configs[$difficulty] ?? $difficulty_configs['normal'];
 
 // Status mapping

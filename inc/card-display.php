@@ -102,7 +102,7 @@ class GrantCardRenderer {
             'deadline_date' => '',
             'application_status' => 'active',
             'grant_difficulty' => 'normal',
-            'grant_success_rate' => 0,
+            'adoption_rate' => 0,
             'grant_target' => '',
             'eligible_expenses' => '',
             'application_method' => 'online',
@@ -200,8 +200,8 @@ class GrantCardRenderer {
                         <span class="grant-deadline">締切: <?php echo esc_html($data['deadline_formatted']); ?></span>
                     <?php endif; ?>
                     
-                    <?php if ($data['grant_success_rate'] > 0) : ?>
-                        <span class="grant-success-rate">採択率: <?php echo intval($data['grant_success_rate']); ?>%</span>
+                    <?php if ($data['adoption_rate'] > 0) : ?>
+                        <span class="grant-success-rate">採択率: <?php echo intval($data['adoption_rate']); ?>%</span>
                     <?php endif; ?>
                     
                     <span class="grant-difficulty difficulty-<?php echo esc_attr($data['grant_difficulty']); ?>">

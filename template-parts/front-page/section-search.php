@@ -176,7 +176,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                                 $amount = get_post_meta($grant->ID, 'max_amount', true);
                                 $deadline = get_post_meta($grant->ID, 'deadline', true);
                                 $organization = get_post_meta($grant->ID, 'organization', true);
-                                $success_rate = get_post_meta($grant->ID, 'grant_success_rate', true);
+                                $success_rate = get_field('adoption_rate', $grant->ID);
                             ?>
                             <div class="grant-card" data-id="<?php echo $grant->ID; ?>">
                                 <div class="card-badge">注目</div>

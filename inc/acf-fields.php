@@ -660,7 +660,7 @@ add_filter('acf/load_field/name=min_amount', function($field) {
     return $field;
 });
 
-add_filter('acf/load_field/name=grant_success_rate', function($field) {
+add_filter('acf/load_field/name=adoption_rate', function($field) {
     $field['append'] = '%';
     return $field;
 });
@@ -817,12 +817,6 @@ add_filter('acf/validate_value/name=max_amount_numeric', function($valid, $value
     return $valid;
 }, 10, 4);
 
-add_filter('acf/validate_value/name=grant_success_rate', function($valid, $value, $field, $input) {
-    if ($value < 0 || $value > 100) {
-        $valid = '採択率は0〜100の範囲で入力してください。';
-    }
-    return $valid;
-}, 10, 4);
 
 add_filter('acf/validate_value/name=adoption_rate', function($valid, $value, $field, $input) {
     if ($value < 0 || $value > 100) {

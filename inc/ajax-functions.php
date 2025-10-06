@@ -2170,7 +2170,7 @@ function gi_calculate_comparison_match_score($grant_id) {
     }
     
     // 難易度調整
-    $difficulty = gi_get_field_safe('application_difficulty', $grant_id, 'normal');
+    $difficulty = gi_get_field_safe('grant_difficulty', $grant_id, 'normal');
     if ($difficulty === 'easy') {
         $base_score += 5;
     } elseif ($difficulty === 'hard') {
@@ -2184,7 +2184,7 @@ function gi_calculate_comparison_match_score($grant_id) {
  * 助成金難易度情報取得
  */
 function gi_get_grant_difficulty_info($grant_id) {
-    $difficulty = gi_get_field_safe('application_difficulty', $grant_id, 'normal');
+    $difficulty = gi_get_field_safe('grant_difficulty', $grant_id, 'normal');
     
     $difficulty_map = [
         'easy' => [
@@ -2561,7 +2561,7 @@ function gi_get_complete_grant_data($post_id) {
         // 対象・条件
         'grant_target' => '',
         'eligible_expenses' => '',
-        'application_difficulty' => 'normal',
+        'grant_difficulty' => 'normal',
         'adoption_rate' => 0,
         'required_documents' => '',
         
@@ -2607,7 +2607,7 @@ function gi_get_complete_grant_data($post_id) {
     // 計算フィールド
     $data['is_deadline_soon'] = gi_is_deadline_soon($data['deadline']);
     $data['application_status_label'] = gi_get_status_label($data['application_status']);
-    $data['difficulty_label'] = gi_get_difficulty_label($data['application_difficulty']);
+    $data['difficulty_label'] = gi_get_difficulty_label($data['grant_difficulty']);
     
     // キャッシュに保存
     $cache[$post_id] = $data;
@@ -2638,7 +2638,7 @@ function gi_get_all_grant_meta($post_id) {
     $meta_fields = [
         'ai_summary', 'organization', 'max_amount', 'max_amount_numeric',
         'deadline', 'application_status', 'grant_target', 'subsidy_rate',
-        'application_difficulty', 'adoption_rate', 'official_url', 'is_featured'
+        'grant_difficulty', 'adoption_rate', 'official_url', 'is_featured'
     ];
     
     foreach ($meta_fields as $field) {
@@ -3023,7 +3023,7 @@ function gi_ajax_load_grants() {
     // 難易度フィルター
     if (!empty($difficulty)) {
         $meta_query[] = [
-            'key' => 'application_difficulty', // ACFフィールド名に合わせる
+            'key' => 'grant_difficulty', // ACFフィールド名に合わせる
             'value' => $difficulty,
             'compare' => 'IN'
         ];
@@ -3588,7 +3588,7 @@ function gi_analyze_grant_characteristics($grant_details) {
     if (strpos($required_docs, '財務書類') !== false) $complexity_factors++;
     
     // 審査難易度
-    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
     if ($difficulty === 'hard') $complexity_factors += 2;
     elseif ($difficulty === 'normal') $complexity_factors += 1;
     
@@ -3650,7 +3650,7 @@ function gi_calculate_comprehensive_ai_score($grant_details) {
     
     // === 3. 申請難易度要因 (重み: 20%) ===
     $difficulty_score = 0;
-    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
     
     switch ($difficulty) {
         case 'easy': $difficulty_score = 20; break;
@@ -3713,7 +3713,7 @@ function gi_estimate_success_probability($grant_details) {
     $probability_factors['industry'] = $industry_multipliers[$characteristics['industry_type']] ?? 0;
     
     // === 3. 申請難易度による調整 ===
-    $difficulty = $grant_details['application_difficulty'] ?? 'normal';
+    $difficulty = $grant_details['grant_difficulty'] ?? 'normal';
     $difficulty_adjustments = [
         'easy' => -0.05,   // 簡単 = 競争が激しい
         'normal' => 0.02,  // 普通 = バランス良い
@@ -4260,7 +4260,7 @@ function gi_identify_risk_factors($grant_details) {
     }
     
     // 複雑性リスク
-    if (($grant_details['application_difficulty'] ?? 'normal') === 'hard') {
+    if (($grant_details['grant_difficulty'] ?? 'normal') === 'hard') {
         $risks[] = '申請要件の複雑性による不備リスク';
     }
     
@@ -4487,7 +4487,7 @@ function gi_calculate_probability_confidence($grant_details, $probability_factor
     if (!empty($grant_details['grant_target'])) $data_completeness++;
     if (!empty($grant_details['organization'])) $data_completeness++;
     if (!empty($grant_details['adoption_rate'])) $data_completeness++;
-    if (!empty($grant_details['application_difficulty'])) $data_completeness++;
+    if (!empty($grant_details['grant_difficulty'])) $data_completeness++;
     
     $completeness_ratio = $data_completeness / $total_fields;
     
