@@ -238,15 +238,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             <button class="nav-tab" data-tab="search">
                 <span class="nav-tab-icon">🔍</span>
             </button>
-            <button class="nav-tab" data-tab="results">
-                <span class="nav-tab-icon">⭐</span>
-            </button>
         </div>
-        
-        <!-- Floating Results Button (Mobile Only) -->
-        <button class="results-fab" id="mobile-results-fab">
-            ⭐
-        </button>
         
     </div>
 </section>
@@ -703,7 +695,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 780px;
+    height: 650px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
 }
@@ -1079,7 +1071,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-radius: 20px;
     padding: 20px;
     border: 2px solid #e0e0e0;
-    height: 780px;
+    height: 650px;
     overflow-y: auto;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
@@ -2056,6 +2048,58 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 }
 
 /* ============================================
+   🖥️ PC版 - モバイルナビゲーション制御
+   ============================================ */
+
+/* PC版では通常時モバイルナビを非表示 */
+.mobile-nav-tabs {
+    display: none;
+}
+
+/* 履歴表示時のみモバイルナビを表示 */
+.history-showing .mobile-nav-tabs {
+    display: flex;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.history-showing .nav-tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    min-width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-showing .nav-tab.active {
+    background: #000;
+    color: #fff;
+}
+
+.history-showing .nav-tab:hover {
+    background: #f0f0f0;
+}
+
+.history-showing .nav-tab.active:hover {
+    background: #000;
+}
+
+/* ============================================
    📱 スマホ完全対応 - AI検索セクション
    ============================================ */
 
@@ -2489,6 +2533,60 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         grid-template-columns: 1fr;
         gap: 16px;
     }
+    
+    /* Mobile Navigation Tabs - 💬🔍 Only */
+    .mobile-nav-tabs {
+        display: flex !important;
+        justify-content: center;
+        margin-bottom: 16px;
+        gap: 4px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: static !important;
+        transform: none !important;
+        z-index: auto !important;
+        backdrop-filter: none !important;
+        border: none !important;
+        left: auto !important;
+        top: auto !important;
+    }
+    
+    .nav-tab {
+        flex: 1;
+        padding: 8px 4px;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        min-width: auto !important;
+    }
+    
+    .nav-tab.active {
+        background: #000;
+        color: #fff;
+    }
+    
+    .nav-tab:hover {
+        background: #f0f0f0;
+    }
+    
+    .nav-tab.active:hover {
+        background: #000;
+    }
+    
+    .nav-tab-icon {
+        font-size: 16px;
+        line-height: 1;
+    }
 }
 
 /* 超小型スマホ対応 (375px以下) */
@@ -2738,6 +2836,34 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 
             // Voice input
             this.elements.voiceBtn?.addEventListener('click', this.startVoiceInput.bind(this));
+
+            // History controls
+            const historyBtn = document.querySelector('.ai-history-btn');
+            const historyPanel = document.querySelector('.ai-history-panel');
+            const historyCloseBtn = document.querySelector('.ai-history-close');
+            
+            if (historyBtn) {
+                historyBtn.addEventListener('click', this.showHistory.bind(this));
+            }
+            
+            if (historyCloseBtn) {
+                historyCloseBtn.addEventListener('click', this.hideHistory.bind(this));
+            }
+            
+            if (historyPanel) {
+                // Close on background click
+                historyPanel.addEventListener('click', (e) => {
+                    if (e.target === historyPanel) {
+                        this.hideHistory();
+                    }
+                });
+            }
+
+            // Mobile navigation tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => {
+                tab.addEventListener('click', this.handleNavTabClick.bind(this));
+            });
 
             // Click outside to close suggestions
             document.addEventListener('click', (e) => {
@@ -3884,6 +4010,51 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 console.error('AI Controller not found');
             }
         };
+        // 🆕 履歴とナビゲーション制御メソッド
+        showHistory() {
+            const historyPanel = document.querySelector('.ai-history-panel');
+            if (historyPanel) {
+                historyPanel.classList.add('active');
+                // PC版でのみbodyに'history-showing'クラスを追加
+                if (window.innerWidth > 768) {
+                    document.body.classList.add('history-showing');
+                }
+            }
+        }
+        
+        hideHistory() {
+            const historyPanel = document.querySelector('.ai-history-panel');
+            if (historyPanel) {
+                historyPanel.classList.remove('active');
+                // PC版のみbodyから'history-showing'クラスを削除
+                document.body.classList.remove('history-showing');
+            }
+        }
+        
+        handleNavTabClick(e) {
+            const tab = e.currentTarget;
+            const tabType = tab.dataset.tab;
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Show corresponding panel
+            this.showPanel(tabType);
+        }
+        
+        showPanel(panelType) {
+            // Hide all panels first
+            const aiPanel = document.querySelector('.ai-assistant-panel');
+            const resultsPanel = document.querySelector('.search-results-panel');
+            
+            if (aiPanel) aiPanel.style.display = panelType === 'chat' ? 'flex' : 'none';
+            if (resultsPanel) resultsPanel.style.display = panelType === 'search' ? 'block' : 'none';
+        }
     }
 
     // 🚨 緊急修正: 最低限の動作保証
