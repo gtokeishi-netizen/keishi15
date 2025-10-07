@@ -1677,11 +1677,11 @@ a.recent-grant-item:hover {
         gap: 30px;
     }
     
-    /* スマホ: 1カラムレイアウト（元のデザイン） */
+    /* スマホ: 2×3グリッドレイアウト（圧縮されたデザイン） */
     .main-categories-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-        margin-bottom: 30px;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
     }
     
     .categories-grid {
@@ -1880,6 +1880,217 @@ a.recent-grant-item:hover {
     .region-button:active,
     .prefecture-item:active {
         opacity: 0.7;
+    }
+    
+    /* カテゴリカード - 圧縮されたモバイル表示 */
+    .category-card {
+        padding: 8px;
+        text-align: center;
+        min-height: 120px;
+    }
+    
+    .category-card .card-inner {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .category-card .card-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin: 0 auto 4px;
+    }
+    
+    .category-card .card-icon i {
+        font-size: 14px;
+    }
+    
+    .category-card .card-title {
+        font-size: 11px;
+        margin: 4px 0 2px;
+        line-height: 1.2;
+        font-weight: 600;
+    }
+    
+    .category-card .card-description {
+        font-size: 9px;
+        line-height: 1.3;
+        margin: 2px 0;
+        opacity: 0.8;
+    }
+    
+    .category-card .card-badge {
+        font-size: 8px;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+    
+    .categories-section h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .section-title .title-ja {
+        font-size: 18px !important;
+    }
+    
+    .section-description {
+        font-size: 14px !important;
+    }
+}
+
+/* Ultra Small Mobile - Further Compression (480px and below) */
+@media (max-width: 480px) {
+    .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 15px;
+    }
+    
+    .category-card {
+        padding: 6px;
+        min-height: 100px;
+    }
+    
+    .category-card .card-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .category-card .card-icon i {
+        font-size: 12px;
+    }
+    
+    .category-card .card-title {
+        font-size: 10px;
+        margin: 3px 0 1px;
+    }
+    
+    .category-card .card-description {
+        font-size: 8px;
+        line-height: 1.2;
+    }
+    
+    .category-card .card-badge {
+        font-size: 7px;
+        margin-top: 3px;
+    }
+    
+    .categories-section h2 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .section-title .title-ja {
+        font-size: 16px !important;
+    }
+    
+    .section-description {
+        font-size: 13px !important;
+    }
+}
+
+/* Extra Small Mobile - Maximum Compression (375px and below) */
+@media (max-width: 375px) {
+    .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+    
+    .category-card {
+        padding: 4px;
+        min-height: 90px;
+    }
+    
+    .category-card .card-icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .category-card .card-icon i {
+        font-size: 10px;
+    }
+    
+    .category-card .card-title {
+        font-size: 9px;
+        margin: 2px 0 1px;
+    }
+    
+    .category-card .card-description {
+        font-size: 7px;
+        line-height: 1.1;
+    }
+    
+    .category-card .card-badge {
+        font-size: 6px;
+        margin-top: 2px;
+    }
+    
+    .categories-section h2 {
+        font-size: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .section-title .title-ja {
+        font-size: 15px !important;
+    }
+    
+    .section-description {
+        font-size: 12px !important;
+    }
+}
+
+/* Smallest Mobile - Ultra Compression (360px and below) */
+@media (max-width: 360px) {
+    .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 3px;
+        margin-bottom: 10px;
+    }
+    
+    .category-card {
+        padding: 3px;
+        min-height: 80px;
+    }
+    
+    .category-card .card-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .category-card .card-icon i {
+        font-size: 9px;
+    }
+    
+    .category-card .card-title {
+        font-size: 8px;
+        margin: 1px 0;
+    }
+    
+    .category-card .card-description {
+        font-size: 6px;
+        line-height: 1.0;
+    }
+    
+    .category-card .card-badge {
+        font-size: 5px;
+        margin-top: 1px;
+    }
+    
+    .categories-section h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    .section-title .title-ja {
+        font-size: 14px !important;
+    }
+    
+    .section-description {
+        font-size: 11px !important;
     }
 }
 </style>

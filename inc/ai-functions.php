@@ -2217,7 +2217,7 @@ function gi_handle_compare_grants() {
             'id' => $id,
             'title' => get_the_title($id),
             'amount' => get_post_meta($id, 'max_amount', true),
-            'rate' => get_post_meta($id, 'grant_success_rate', true),
+            'rate' => get_field('adoption_rate', $id),
             'deadline' => get_post_meta($id, 'deadline', true),
             'match_score' => gi_calculate_match_score($id),
             'difficulty' => gi_calculate_difficulty_score($id)

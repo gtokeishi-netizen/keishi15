@@ -63,7 +63,7 @@ $grant_data = array(
     'region_notes' => get_field('region_notes', $post_id) ?: '',
     'required_documents' => get_field('required_documents', $post_id) ?: '',
     'adoption_rate' => floatval(get_field('adoption_rate', $post_id)),
-    'application_difficulty' => get_field('application_difficulty', $post_id) ?: 'normal',
+    'grant_difficulty' => get_field('grant_difficulty', $post_id) ?: 'normal',
     'target_expenses' => get_field('target_expenses', $post_id) ?: '',
     'subsidy_rate' => get_field('subsidy_rate', $post_id) ?: '',
     
@@ -84,7 +84,7 @@ $application_status = $grant_data['application_status'];
 $organization = $grant_data['organization'];
 $grant_target = $grant_data['grant_target'];
 $subsidy_rate = $grant_data['subsidy_rate'];
-$grant_difficulty = $grant_data['application_difficulty'];
+$grant_difficulty = $grant_data['grant_difficulty'];
 $grant_success_rate = $grant_data['adoption_rate'];
 $official_url = $grant_data['official_url'];
 $eligible_expenses = $grant_data['target_expenses'];
@@ -185,7 +185,7 @@ $difficulty_configs = array(
     'hard' => array('label' => '難しい', 'dots' => 3, 'color' => '#d97706'),
     'very_hard' => array('label' => '非常に困難', 'dots' => 4, 'color' => '#dc2626')
 );
-$difficulty = $grant_data['application_difficulty'];
+$difficulty = $grant_data['grant_difficulty'];
 $difficulty_data = $difficulty_configs[$difficulty] ?? $difficulty_configs['normal'];
 
 // CSS・JSの重複防止
@@ -295,13 +295,13 @@ static $assets_loaded = false;
 	
 
 /* ============================================
-   カード表示モード - 改良版
+   カード表示モード - コンパクト版（縦サイズを小さく）
 ============================================ */
 .grant-view-card .grant-card-unified {
     position: relative;
     width: 100%;
     max-width: 100%;
-    min-height: 420px;
+    min-height: 320px; /* 420px から 320px に縮小 */
     background: var(--clean-white);
     border: 2px solid var(--clean-gray-300);
     border-radius: var(--clean-radius-xl);
@@ -581,17 +581,17 @@ static $assets_loaded = false;
 }
 
 /* ============================================
-   トレーディングカード風 AI要約セクション - メイン表示版
+   トレーディングカード風 AI要約セクション - 全面表示版（縦サイズ拡大）
 ============================================ */
 .grant-ai-summary {
     position: relative;
-    padding: 1.8rem;
+    padding: 2rem;
     background: linear-gradient(145deg, #ffffff 0%, #f8fafc 30%, #ffffff 70%, #f0f9ff 100%);
     border: 4px solid var(--clean-gray-900);
     border-radius: var(--clean-radius-2xl);
-    margin-bottom: 2rem;
-    min-height: 160px;
-    max-height: 200px;
+    margin-bottom: 1.5rem; /* 2rem から 1.5rem に縮小 */
+    min-height: 180px; /* 160px から 180px に拡大 */
+    max-height: 240px; /* 200px から 240px に拡大 */
     overflow: hidden;
     transition: var(--clean-transition-slow);
     box-shadow: 
@@ -601,12 +601,13 @@ static $assets_loaded = false;
         inset 0 -2px 8px rgba(0, 0, 0, 0.05);
     cursor: default;
     z-index: 5;
+    flex: 1; /* 利用可能なスペースを最大限使用 */
 }
 
 /* トレーディングカード風ホバーエフェクト - スクロール機能付き */
 .grant-ai-summary:hover {
     transform: translateY(-8px) scale(1.03) rotateX(3deg);
-    max-height: 250px;
+    max-height: 280px; /* 250px から 280px に拡大 */
     overflow-y: auto;
     box-shadow: 
         0 20px 45px rgba(0, 0, 0, 0.25),
@@ -695,14 +696,14 @@ static $assets_loaded = false;
     }
 }
 
-/* スクロール可能なAI要約テキスト - 改良版 */
+/* スクロール可能なAI要約テキスト - 全面表示版 */
 .grant-ai-summary-text {
     color: var(--clean-gray-900);
-    font-size: 1rem;
+    font-size: 1.05rem; /* 1rem から 1.05rem に拡大 */
     line-height: 1.7;
     margin: 0;
     font-weight: 600;
-    max-height: 100px;
+    max-height: 140px; /* 100px から 140px に拡大 */
     overflow-y: hidden;
     padding-right: 0.75rem;
     position: relative;
@@ -712,7 +713,7 @@ static $assets_loaded = false;
 
 /* ホバー時にスクロール可能に */
 .grant-ai-summary:hover .grant-ai-summary-text {
-    max-height: 180px;
+    max-height: 220px; /* 180px から 220px に拡大 */
     overflow-y: auto;
     padding-right: 0.5rem;
 }
@@ -984,42 +985,10 @@ static $assets_loaded = false;
     outline-offset: 2px;
 }
 
-/* AI Checklist Button - 改良版 */
-.grant-btn--checklist {
-    background: #fff;
-    color: #000;
-    border: 2px solid #000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* AI Checklist Button styles removed per user request */
 }
 
-.grant-btn--checklist:hover {
-    background: #000;
-    color: #fff;
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* AI Compare Button - 改良版 */
-.grant-btn--compare {
-    background: #fff;
-    color: #000;
-    border: 2px solid #000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.grant-btn--compare:hover {
-    background: #000;
-    color: #fff;
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.grant-btn--compare.active {
-    background: #fbbf24;
-    color: #000;
-    border-color: #fbbf24;
-    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
-}
+/* Compare button styles removed per user request */
 
 /* ============================================
    AI機能バッジ群（モノクローム）
@@ -1760,27 +1729,29 @@ emoji,
         cursor: pointer;
     }
     
-    /* AI要約セクションの高さ調整 - モバイル最適化 */
+    /* AI要約セクションの高さ調整 - モバイル最適化（全面表示版） */
     .grant-ai-summary {
-        min-height: auto;
-        max-height: 180px;
+        min-height: 160px; /* auto から 160px に変更 */
+        max-height: 200px; /* 180px から 200px に拡大 */
         padding: 1.25rem;
         border-width: 3px;
         margin-bottom: 1.25rem;
         overflow-y: auto;
+        flex: 1; /* 利用可能なスペースを最大限使用 */
     }
     
     /* モバイルではホバーではなくタップでスクロール可能に */
     .grant-ai-summary:active {
-        max-height: 220px;
+        max-height: 240px; /* 220px から 240px に拡大 */
         overflow-y: auto;
     }
     
     .grant-ai-summary-text {
-        -webkit-line-clamp: 4;
-        font-size: 0.9375rem;
+        -webkit-line-clamp: 5; /* 4 から 5 に拡大 */
+        font-size: 0.95rem; /* 0.9375rem から 0.95rem に拡大 */
         line-height: 1.6;
         font-weight: 500;
+        max-height: 120px; /* テキスト領域も拡大 */
     }
     
     .grant-ai-summary-label {
@@ -1832,9 +1803,9 @@ emoji,
         border-width: 2px;
     }
     
-    /* カードの最小高さ調整 */
+    /* カードの最小高さ調整 - コンパクト版 */
     .grant-view-card .grant-card-unified {
-        min-height: auto;
+        min-height: 280px; /* auto から 280px に変更（デスクトップの320pxより小さく） */
         padding-bottom: 0;
     }
     
@@ -2534,7 +2505,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="grant-ai-modal-container">
                     <div class="grant-ai-modal-header">
                         <div class="grant-ai-modal-title">
-                            <span>AI質問チャット</span>
+                            <span>この助成金について質問する</span>
                         </div>
                         <div class="grant-ai-modal-subtitle">${grantTitle}</div>
                         <button class="grant-ai-modal-close" onclick="closeAIChatModal()">
@@ -2545,7 +2516,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="grant-ai-chat-messages" id="ai-chat-messages-${postId}">
                             <div class="grant-ai-message grant-ai-message--assistant">
                                 <div class="grant-ai-message-content">
-                                    こんにちは！この助成金について何でもお聞きください。申請方法、対象要件、必要書類など、詳しくお答えします。
+                                    この助成金について何でもお聞きください。申請条件、必要書類、申請方法などについてお答えします。
                                 </div>
                             </div>
                         </div>
@@ -2554,7 +2525,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <textarea 
                                     class="grant-ai-chat-input" 
                                     id="ai-chat-input-${postId}"
-                                    placeholder="この助成金について質問してください..."
+                                    placeholder="例：申請条件は何ですか？必要書類を教えてください"
                                     rows="3"></textarea>
                                 <button 
                                     class="grant-ai-chat-send" 
@@ -2564,12 +2535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </button>
                             </div>
                             <div class="grant-ai-chat-suggestions">
-                                <button class="grant-ai-suggestion" onclick="selectSuggestion('${postId}', 'この助成金の申請条件を教えてください')">
-                                    申請条件について
-                                </button>
-                                <button class="grant-ai-suggestion" onclick="selectSuggestion('${postId}', 'この助成金の申請方法を詳しく教えてください')">
-                                    申請方法について  
-                                </button>
+                                <!-- Application form suggestion buttons removed per user request -->
                                 <button class="grant-ai-suggestion" onclick="selectSuggestion('${postId}', 'どんな費用が対象になりますか？')">
                                     対象経費について
                                 </button>
@@ -2846,26 +2812,7 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- トレーディングカード風情報グリッド - 助成額と地域のみ -->
-            <div class="grant-info-grid">
-                <!-- 助成金額 -->
-                <?php if ($amount_display): ?>
-                <div class="grant-info-item grant-info-item--amount">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label" data-type="amount">助成額</span>
-                        <span class="grant-info-value"><?php echo esc_html($amount_display); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- 地域 -->
-                <div class="grant-info-item grant-info-item--location">
-                    <div class="grant-info-content">
-                        <span class="grant-info-label" data-type="region">地域</span>
-                        <span class="grant-info-value"><?php echo esc_html($prefecture); ?></span>
-                    </div>
-                </div>
-            </div>
+            <!-- 情報グリッドをホバー時のみ表示に変更 -->
             
             <!-- タグ -->
             <?php if ($main_industry || $application_period): ?>
@@ -2897,7 +2844,7 @@ document.head.appendChild(grantCardStyles);
                     data-grant-title="<?php echo esc_attr($title); ?>"
                     onclick="openGrantAIChat(this)" 
                     role="button">
-                <span>AIに質問</span>
+                <span>質問する</span>
             </button>
             <?php if ($official_url): ?>
             <a href="<?php echo esc_url($official_url); ?>" class="grant-btn grant-btn--secondary grant-btn--icon" target="_blank" rel="noopener noreferrer" role="button" title="公式サイト">
@@ -2909,31 +2856,9 @@ document.head.appendChild(grantCardStyles);
             <?php endif; ?>
             
             <!-- AI機能ボタン群 -->
-            <button class="grant-btn grant-btn--checklist grant-btn--icon" 
-                    data-post-id="<?php echo esc_attr($post_id); ?>" 
-                    data-grant-title="<?php echo esc_attr($title); ?>"
-                    onclick="openGrantChecklist(this)" 
-                    title="チェックリスト"
-                    role="button">
-                <svg class="grant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 11l3 3 8-8"/>
-                    <path d="m21 12-8 8-3-3"/>
-                    <rect x="3" y="5" width="6" height="6" rx="1"/>
-                </svg>
-            </button>
+            <!-- Application checklist button removed per user request -->
             
-            <button class="grant-btn grant-btn--compare grant-btn--icon" 
-                    data-post-id="<?php echo esc_attr($post_id); ?>" 
-                    data-grant-title="<?php echo esc_attr($title); ?>"
-                    onclick="addToCompare(this)" 
-                    title="比較機能"
-                    role="button">
-                <svg class="grant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18"/>
-                    <path d="M7 12h10"/>
-                    <path d="M10 18h4"/>
-                </svg>
-            </button>
+            <!-- Compare button removed per user request -->
         </div>
     </footer>
     
@@ -2962,7 +2887,7 @@ document.head.appendChild(grantCardStyles);
             </div>
             <?php endif; ?>
             
-            <!-- クイック統計 -->
+            <!-- クイック統計 - 助成額と地域を表示 -->
             <div class="grant-quick-stats">
                 <?php if ($amount_display): ?>
                 <div class="grant-stat-item">
@@ -2991,16 +2916,7 @@ document.head.appendChild(grantCardStyles);
                 </div>
                 <?php endif; ?>
                 
-                <?php if ($application_period): ?>
-                <div class="grant-detail-section">
-                    <div class="grant-detail-label">
-                        <span>申請期間</span>
-                    </div>
-                    <div class="grant-detail-value">
-                        <?php echo esc_html($application_period); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
+                <!-- Application period section removed per user request -->
                 
                 <?php if ($eligible_expenses): ?>
                 <div class="grant-detail-section">
@@ -3024,16 +2940,7 @@ document.head.appendChild(grantCardStyles);
                 </div>
                 <?php endif; ?>
                 
-                <?php if ($application_method): ?>
-                <div class="grant-detail-section">
-                    <div class="grant-detail-label">
-                        <span>申請方法</span>
-                    </div>
-                    <div class="grant-detail-value">
-                        <?php echo esc_html($application_method); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
+                <!-- Application method section removed per user request -->
                 
                 <?php if ($contact_info): ?>
                 <div class="grant-detail-section">
@@ -3062,215 +2969,17 @@ if (!$ai_features_js_loaded):
 // ============================================================================
 
 // AJAX URL設定
-const ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
 
-// グローバル比較リスト
-window.compareList = window.compareList || [];
+// Compare functionality removed per user request
 
-/**
- * AI申請チェックリスト表示
- */
-function openGrantChecklist(button) {
-    const postId = button.dataset.postId;
-    const grantTitle = button.dataset.grantTitle;
-    
-    // モーダル作成
-    const modal = document.createElement('div');
-    modal.className = 'ai-checklist-modal';
-    modal.innerHTML = `
-        <div class="ai-modal-overlay" onclick="this.parentElement.remove()"></div>
-        <div class="ai-modal-content">
-            <div class="ai-modal-header">
-                <h3>AI申請チェックリスト</h3>
-                <button class="ai-modal-close grant-btn--icon" onclick="this.closest('.ai-checklist-modal').remove()">
-                    <svg class="grant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="ai-modal-body">
-                <p class="ai-grant-title">${grantTitle}</p>
-                <div class="ai-checklist-loading">
-                    チェックリスト生成中...
-                </div>
-                <div class="ai-checklist-items" style="display:none;"></div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // AJAX でチェックリスト取得
-    fetch(ajaxurl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            action: 'gi_generate_checklist',
-            post_id: postId,
-            nonce: '<?php echo wp_create_nonce("gi_ai_search_nonce"); ?>'
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const checklistHtml = data.data.checklist.map(item => `
-                <label class="ai-checklist-item" data-priority="${item.priority}">
-                    <input type="checkbox" ${item.checked ? 'checked' : ''}>
-                    <span class="ai-check-mark"></span>
-                    <span class="ai-check-text">${item.text}</span>
-                    <span class="ai-check-priority">${item.priority === 'high' ? '重要' : ''}</span>
-                </label>
-            `).join('');
-            
-            modal.querySelector('.ai-checklist-loading').style.display = 'none';
-            modal.querySelector('.ai-checklist-items').style.display = 'block';
-            modal.querySelector('.ai-checklist-items').innerHTML = checklistHtml;
-        }
-    });
-}
+// openGrantChecklist (AI application checklist) function removed per user request
 
-/**
- * AI比較機能に追加
- */
-function addToCompare(button) {
-    const postId = button.dataset.postId;
-    const grantTitle = button.dataset.grantTitle;
-    
-    // 既に追加されているかチェック
-    if (window.compareList.some(item => item.id === postId)) {
-        button.classList.remove('active');
-        window.compareList = window.compareList.filter(item => item.id !== postId);
-        showToast('比較から削除しました');
-        updateCompareButton();
-        return;
-    }
-    
-    // 最大3件まで
-    if (window.compareList.length >= 3) {
-        showToast('比較は最大3件までです', 'warning');
-        return;
-    }
-    
-    window.compareList.push({ id: postId, title: grantTitle });
-    button.classList.add('active');
-    showToast('比較に追加しました');
-    updateCompareButton();
-}
+// addToCompare function removed per user request
 
-/**
- * 比較ボタン更新
- */
-function updateCompareButton() {
-    // 固定比較ボタンを表示/更新
-    let compareBtn = document.getElementById('ai-compare-floating-btn');
-    
-    if (window.compareList.length >= 2) {
-        if (!compareBtn) {
-            compareBtn = document.createElement('button');
-            compareBtn.id = 'ai-compare-floating-btn';
-            compareBtn.className = 'ai-floating-compare-btn';
-            compareBtn.onclick = showCompareModal;
-            document.body.appendChild(compareBtn);
-        }
-        compareBtn.innerHTML = `
-            <span>${window.compareList.length}件を比較</span>
-        `;
-        compareBtn.style.display = 'flex';
-    } else if (compareBtn) {
-        compareBtn.style.display = 'none';
-    }
-}
+// updateCompareButton function removed per user request
 
-/**
- * AI比較モーダル表示
- */
-function showCompareModal() {
-    if (window.compareList.length < 2) {
-        showToast('比較するには2件以上選択してください', 'warning');
-        return;
-    }
-    
-    const modal = document.createElement('div');
-    modal.className = 'ai-compare-modal';
-    modal.innerHTML = `
-        <div class="ai-modal-overlay" onclick="this.parentElement.remove()"></div>
-        <div class="ai-modal-content ai-modal-large">
-            <div class="ai-modal-header">
-                <h3>AI比較分析</h3>
-                <button class="ai-modal-close grant-btn--icon" onclick="this.closest('.ai-compare-modal').remove()">
-                    <svg class="grant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="ai-modal-body">
-                <div class="ai-compare-loading">
-                    分析中...
-                </div>
-                <div class="ai-compare-result" style="display:none;"></div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // AJAX で比較データ取得
-    fetch(ajaxurl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            action: 'gi_compare_grants',
-            grant_ids: window.compareList.map(g => g.id),
-            nonce: '<?php echo wp_create_nonce("gi_ai_search_nonce"); ?>'
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const comparison = data.data.comparison;
-            const recommendation = data.data.recommendation;
-            
-            const tableHtml = `
-                <div class="ai-recommend-box">
-                    <strong>AIのおすすめ:</strong> ${recommendation.title}
-                    <span class="recommend-score">適合度 ${recommendation.match_score}%</span>
-                </div>
-                <table class="ai-compare-table">
-                    <thead>
-                        <tr>
-                            <th>項目</th>
-                            ${comparison.map(g => `<th>${g.title}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>助成額</td>
-                            ${comparison.map(g => `<td>${g.amount || '未定'}</td>`).join('')}
-                        </tr>
-                        <tr>
-                            <td>AI適合度</td>
-                            ${comparison.map(g => `<td><strong>${g.match_score}%</strong></td>`).join('')}
-                        </tr>
-                        <tr>
-                            <td>採択率</td>
-                            ${comparison.map(g => `<td>${g.rate || '-'}%</td>`).join('')}
-                        </tr>
-                        <tr>
-                            <td>難易度</td>
-                            ${comparison.map(g => `<td>${g.difficulty.label}</td>`).join('')}
-                        </tr>
-                    </tbody>
-                </table>
-            `;
-            
-            modal.querySelector('.ai-compare-loading').style.display = 'none';
-            modal.querySelector('.ai-compare-result').style.display = 'block';
-            modal.querySelector('.ai-compare-result').innerHTML = tableHtml;
-        }
-    });
-}
+// showCompareModal function removed per user request
 
 /**
  * トースト通知
@@ -3295,8 +3004,7 @@ function showToast(message, type = 'success') {
 <!-- AI機能CSS -->
 <style>
 /* AI Modal Base */
-.ai-checklist-modal,
-.ai-compare-modal {
+.ai-checklist-modal {
     position: fixed;
     inset: 0;
     z-index: 10000;
@@ -3468,120 +3176,7 @@ function showToast(message, type = 'success') {
     border-radius: 0.375rem;
 }
 
-/* AI Compare Styles */
-.ai-compare-loading {
-    text-align: center;
-    padding: 2rem;
-    font-size: 1.125rem;
-    color: var(--clean-gray-600);
-}
-
-.ai-compare-loading::after {
-    content: '';
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid var(--clean-gray-300);
-    border-radius: 50%;
-    border-top-color: var(--clean-gray-900);
-    animation: spin 1s ease-in-out infinite;
-    margin-left: 0.5rem;
-}
-
-.ai-recommend-box {
-    background: linear-gradient(135deg, var(--clean-gray-900) 0%, var(--clean-gray-700) 100%);
-    color: white;
-    padding: 1.25rem;
-    border-radius: 0.75rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.recommend-score {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.5rem 0.75rem;
-    border-radius: 2rem;
-    font-weight: 700;
-    font-size: 0.875rem;
-}
-
-.ai-compare-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    border: 2px solid var(--clean-gray-900);
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-
-.ai-compare-table th,
-.ai-compare-table td {
-    padding: 0.875rem;
-    text-align: left;
-    border-bottom: 1px solid var(--clean-gray-200);
-    font-size: 0.9375rem;
-}
-
-.ai-compare-table th {
-    background: var(--clean-gray-900);
-    color: white;
-    font-weight: 700;
-    font-size: 0.875rem;
-}
-
-.ai-compare-table td {
-    background: var(--clean-white);
-}
-
-.ai-compare-table tr:nth-child(even) td {
-    background: var(--clean-gray-50);
-}
-
-.ai-compare-table tr:hover td {
-    background: var(--clean-gray-100);
-}
-
-/* Floating Compare Button */
-.ai-floating-compare-btn {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: var(--clean-gradient-primary);
-    color: white;
-    border: none;
-    padding: 1rem 1.5rem;
-    border-radius: 2rem;
-    font-weight: 700;
-    font-size: 0.9375rem;
-    cursor: pointer;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    z-index: 1000;
-    transition: all 0.3s;
-    animation: bounce 2s infinite;
-}
-
-.ai-floating-compare-btn:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-5px);
-    }
-    60% {
-        transform: translateY(-3px);
-    }
-}
+/* AI Compare Styles removed per user request */
 
 /* Toast Notifications */
 .ai-toast {
@@ -3642,18 +3237,7 @@ function showToast(message, type = 'success') {
         padding: 0.75rem;
     }
     
-    .ai-compare-table th,
-    .ai-compare-table td {
-        padding: 0.5rem;
-        font-size: 0.8125rem;
-    }
-    
-    .ai-floating-compare-btn {
-        bottom: 1rem;
-        right: 1rem;
-        padding: 0.875rem 1.25rem;
-        font-size: 0.875rem;
-    }
+    /* Comparison responsive styles removed per user request */
     
     .ai-toast {
         bottom: 1rem;
@@ -3705,83 +3289,11 @@ function showToast(message, type = 'success') {
     font-weight: 600;
 }
 
-/* Compare Table */
-.ai-compare-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
+/* Compare Table styles removed per user request */
 
-.ai-compare-table th,
-.ai-compare-table td {
-    padding: 0.875rem;
-    border: 2px solid #000;
-    text-align: center;
-}
+/* ai-recommend-box removed per user request */
 
-.ai-compare-table thead th {
-    background: #000;
-    color: #fff;
-    font-weight: 700;
-}
-
-.ai-compare-table tbody td:first-child {
-    background: #f5f5f5;
-    font-weight: 600;
-    text-align: left;
-}
-
-.ai-recommend-box {
-    background: #fbbf24;
-    color: #000;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.recommend-score {
-    margin-left: auto;
-    background: #000;
-    color: #fff;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-}
-
-/* Floating Compare Button */
-.ai-floating-compare-btn {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: #000;
-    color: #fff;
-    border: none;
-    padding: 1rem 1.5rem;
-    border-radius: 2rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s;
-    z-index: 9999;
-    animation: bounce 2s ease-in-out infinite;
-}
-
-.ai-floating-compare-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-}
+/* Comparison styles removed per user request */
 
 /* Toast */
 .ai-toast {
@@ -3852,30 +3364,9 @@ function showToast(message, type = 'success') {
     color: #fff;
 }
 
-.grant-btn--checklist.grant-btn--icon {
-    border-color: #059669;
-    color: #059669;
-}
+/* Checklist icon button styles removed per user request */
 
-.grant-btn--checklist.grant-btn--icon:hover {
-    background: #059669;
-    color: #fff;
-}
-
-.grant-btn--compare.grant-btn--icon {
-    border-color: #dc2626;
-    color: #dc2626;
-}
-
-.grant-btn--compare.grant-btn--icon:hover {
-    background: #dc2626;
-    color: #fff;
-}
-
-.grant-btn--compare.grant-btn--icon.active {
-    background: #dc2626;
-    color: #fff;
-}
+/* Compare button styles removed per user request */
 
 /* Close button styles */
 .grant-hover-close.grant-btn--icon,

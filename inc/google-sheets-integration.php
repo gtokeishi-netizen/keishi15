@@ -2341,10 +2341,20 @@ class SheetsWebhookHandler {
                         break;
                         
                     case 'difficulty_level':
-                        // 申請難易度のデフォルト値設定
+                        // 申請難易度のデフォルト値設定とマッピング
                         if (empty($value)) {
                             $value = '中級';
                         }
+                        // Google Sheetsの値をACFフィールドの値にマッピング
+                        $difficulty_mapping = [
+                            '初級' => 'easy',
+                            '中級' => 'normal', 
+                            '上級' => 'hard',
+                            '非常に高い' => 'expert'
+                        ];
+                        $mapped_value = $difficulty_mapping[$value] ?? 'normal';
+                        // grant_difficultyフィールドにマッピングされた値を保存
+                        update_field('grant_difficulty', $mapped_value, $post_id);
                         break;
                 }
                 
@@ -2559,7 +2569,15 @@ class SheetsWebhookHandler {
         $area_notes = get_field('area_notes', $post_id);
         $required_documents = get_field('required_documents_detailed', $post_id);
         $adoption_rate = get_field('adoption_rate', $post_id);
-        $difficulty_level = get_field('difficulty_level', $post_id) ?: '中級';
+        $grant_difficulty = get_field('grant_difficulty', $post_id) ?: 'normal';
+        // ACFフィールドの値をGoogle Sheetsの値に逆マッピング
+        $difficulty_reverse_mapping = [
+            'easy' => '初級',
+            'normal' => '中級',
+            'hard' => '上級', 
+            'expert' => '非常に高い'
+        ];
+        $difficulty_level = $difficulty_reverse_mapping[$grant_difficulty] ?? '中級';
         $eligible_expenses = get_field('eligible_expenses_detailed', $post_id);
         $subsidy_rate = get_field('subsidy_rate_detailed', $post_id);
 
@@ -2892,7 +2910,15 @@ class SheetsInitializer {
         $area_notes = get_field('area_notes', $post_id);
         $required_documents = get_field('required_documents_detailed', $post_id);
         $adoption_rate = get_field('adoption_rate', $post_id);
-        $difficulty_level = get_field('difficulty_level', $post_id) ?: '中級';
+        $grant_difficulty = get_field('grant_difficulty', $post_id) ?: 'normal';
+        // ACFフィールドの値をGoogle Sheetsの値に逆マッピング
+        $difficulty_reverse_mapping = [
+            'easy' => '初級',
+            'normal' => '中級',
+            'hard' => '上級', 
+            'expert' => '非常に高い'
+        ];
+        $difficulty_level = $difficulty_reverse_mapping[$grant_difficulty] ?? '中級';
         $eligible_expenses = get_field('eligible_expenses_detailed', $post_id);
         $subsidy_rate = get_field('subsidy_rate_detailed', $post_id);
 

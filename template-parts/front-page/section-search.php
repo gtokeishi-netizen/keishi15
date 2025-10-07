@@ -60,10 +60,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                         autocomplete="off">
                     <div class="search-actions">
                         <button class="voice-btn" aria-label="音声入力">
-                            音声
+                            <span class="voice-icon" style="filter: grayscale(1) brightness(0);">🎤</span>
                         </button>
                         <button id="ai-search-btn" class="search-btn">
                             <span class="btn-text">検索</span>
+                            <span class="search-icon" style="filter: grayscale(1) brightness(0); margin-left: 8px;">🔍</span>
                         </button>
                     </div>
                 </div>
@@ -95,22 +96,10 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                             <h3 class="assistant-name">補助金AIアシスタント</h3>
                             <span class="assistant-status">オンライン</span>
                         </div>
-                        <button class="ai-history-btn" onclick="toggleChatHistory()" title="会話履歴">
-                            履歴
-                            <span class="history-count">0</span>
-                        </button>
+
                     </div>
                     
-                    <!-- AI会話履歴パネル -->
-                    <div class="ai-history-panel" id="ai-history-panel" style="display:none;">
-                        <div class="ai-history-header">
-                            <h4>会話履歴</h4>
-                            <button onclick="clearChatHistory()" class="ai-history-clear">クリア</button>
-                        </div>
-                        <div class="ai-history-list" id="ai-history-list">
-                            <p class="ai-history-empty">履歴がありません</p>
-                        </div>
-                    </div>
+
                     
                     <div class="chat-messages" id="chat-messages">
                         <div class="message message-ai">
@@ -130,7 +119,9 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                             class="chat-input"
                             placeholder="質問を入力してください"
                             rows="1"></textarea>
-                        <button id="chat-send" class="chat-send-btn">送信</button>
+                        <button id="chat-send" class="chat-send-btn">
+                            送信
+                        </button>
                     </div>
 
                     <!-- Quick Questions -->
@@ -176,7 +167,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                                 $amount = get_post_meta($grant->ID, 'max_amount', true);
                                 $deadline = get_post_meta($grant->ID, 'deadline', true);
                                 $organization = get_post_meta($grant->ID, 'organization', true);
-                                $success_rate = get_post_meta($grant->ID, 'grant_success_rate', true);
+                                $success_rate = get_field('adoption_rate', $grant->ID);
                             ?>
                             <div class="grant-card" data-id="<?php echo $grant->ID; ?>">
                                 <div class="card-badge">注目</div>
@@ -225,6 +216,17 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 
 
         </div>
+        
+        <!-- Mobile Navigation Tabs (Mobile Only) -->
+        <div class="mobile-nav-tabs">
+            <button class="nav-tab active" data-tab="chat">
+                <span class="nav-tab-icon">💬</span>
+            </button>
+            <button class="nav-tab" data-tab="search">
+                <span class="nav-tab-icon">🔍</span>
+            </button>
+        </div>
+        
     </div>
 </section>
 
@@ -232,10 +234,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 /* Monochrome AI Search Section Styles */
 .monochrome-ai-search {
     position: relative;
-    padding: 120px 0;
+    padding: 120px 0 160px 0;
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     font-family: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
     overflow: hidden;
+    min-height: 100vh;
 }
 
 /* 背景エフェクト（カテゴリーセクションと統一） */
@@ -477,33 +480,47 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 }
 
 .voice-btn {
-    width: 44px;
-    height: 44px;
-    border: none;
-    background: transparent;
-    color: #666;
+    width: 48px;
+    height: 48px;
+    border: 2px solid #000;
+    background: #fff;
+    color: #000;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.3s;
     position: relative;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.voice-icon {
+    font-size: 1.2rem;
+    filter: grayscale(1) brightness(0); /* 白黒アイコン */
 }
 
 .voice-btn::after {
     content: '';
     position: absolute;
-    inset: 8px;
+    inset: 4px;
     border: 2px solid transparent;
-    transition: all 0.2s;
+    border-radius: 6px;
+    transition: all 0.3s;
 }
 
 .voice-btn:hover {
-    color: #000;
+    background: #000;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.voice-btn:hover .voice-icon {
+    filter: grayscale(1) brightness(0) invert(1); /* ホバー時に白に変換 */
 }
 
 .voice-btn:hover::after {
-    border-color: #000;
+    border-color: #fff;
 }
 
 .search-btn {
@@ -649,22 +666,30 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     transform: scaleX(1);
 }
 
-/* Main Content */
+/* Main Content - Expanded Height for Better Visibility */
 .ai-main-content {
     display: grid;
-    grid-template-columns: 380px 1fr;
+    grid-template-columns: 45% 55%;
     gap: 32px;
     margin-bottom: 48px;
+    min-height: 1400px;
 }
 
-/* AI Assistant Panel */
+/* AI Assistant Panel - Ultra Maximum Height for Better Chat History Visibility */
 .ai-assistant-panel {
     background: #fafafa;
     border-radius: 20px;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 600px;
+    height: 650px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.ai-assistant-panel:hover {
+    border-color: #d0d0d0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
 .assistant-header {
@@ -719,165 +744,20 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     color: #10b981;
 }
 
-/* AI History Button */
-.ai-history-btn {
-    margin-left: auto;
-    background: #fff;
-    border: 2px solid #000;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
 
-.ai-history-btn:hover {
-    background: #000;
-    color: #fff;
-}
 
-.history-count {
-    background: #000;
-    color: #fff;
-    padding: 0.125rem 0.5rem;
-    border-radius: 2px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
 
-.ai-history-btn:hover .history-count {
-    background: #fff;
-    color: #000;
-}
 
-/* AI History Panel */
-.ai-history-panel {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 100%;
-    max-height: 300px;
-    background: #fff;
-    border: 2px solid #000;
-    border-radius: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    overflow: hidden;
-    animation: slideDown 0.3s ease;
-    margin-top: 0.5rem;
-}
-
-@keyframes slideDown {
-    from { 
-        opacity: 0; 
-        transform: translateY(-10px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
-}
-
-.ai-history-header {
-    padding: 1rem;
-    border-bottom: 2px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fafafa;
-}
-
-.ai-history-header h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.ai-history-clear {
-    background: #fff;
-    border: 2px solid #000;
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-}
-
-.ai-history-clear:hover {
-    background: #000;
-    color: #fff;
-}
-
-.ai-history-list {
-    padding: 1rem;
-    max-height: 220px;
-    overflow-y: auto;
-}
-
-.ai-history-empty {
-    text-align: center;
-    color: #999;
-    font-size: 0.875rem;
-    padding: 2rem 1rem;
-    margin: 0;
-}
-
-.ai-history-item {
-    padding: 0.75rem;
-    border: 2px solid #e5e5e5;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.ai-history-item:hover {
-    border-color: #000;
-    background: #fafafa;
-    transform: translateX(4px);
-}
-
-.ai-history-item:last-child {
-    margin-bottom: 0;
-}
-
-.history-date {
-    font-size: 0.625rem;
-    color: #999;
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-}
-
-.history-question {
-    font-size: 0.8125rem;
-    color: #333;
-    font-weight: 500;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Chat Messages */
+/* Chat Messages - Ultra Maximum Height for Better Conversation History */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    min-height: 800px;
+    max-height: 1000px;
 }
 
 .message {
@@ -898,20 +778,27 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 .message-bubble {
     max-width: 100%;
     width: 100%;
-    padding: 20px 24px;
+    padding: 16px 20px;
     background: #fff;
-    border-radius: 8px;
-    font-size: 16px;
-    line-height: 1.8;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    border: 1px solid #e0e0e0;
-    min-height: 80px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 2px solid #e0e0e0;
+    min-height: 60px;
+    transition: all 0.2s ease;
+}
+
+.message-bubble:hover {
+    border-color: #ccc;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
 
 .message-user .message-bubble {
     background: #000;
     color: #fff;
     border-color: #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* Chat Input */
@@ -955,11 +842,11 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     background: #fff;
     border: 2px solid #000;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 14px;
     resize: none;
     outline: none;
     transition: all 0.2s;
-    min-height: 44px;
+    min-height: 40px;
 }
 
 .chat-input:focus {
@@ -1018,11 +905,15 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-color: #000;
 }
 
-/* Search Results Panel */
+/* Search Results Panel - Ultra Maximum Height for Better Results Display */
 .search-results-panel {
     background: #fafafa;
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    height: 650px;
+    overflow-y: auto;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 
 .results-header {
@@ -1963,15 +1854,74 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     font-size: 14px;
 }
 
-/* Responsive */
+/* Tablet Layout - Improved Responsive Design with Taller Panels */
+@media (max-width: 1024px) {
+    .ai-main-content {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        min-height: auto;
+    }
+    
+    .ai-assistant-panel {
+        height: 600px;
+        order: 1;
+        margin-bottom: 16px;
+    }
+    
+    .chat-messages {
+        min-height: 350px;
+        max-height: 420px;
+    }
+    
+    .search-results-panel {
+        order: 2;
+        height: 500px;
+    }
+    
+    .section-container {
+        padding: 0 20px;
+    }
+    
+    .monochrome-ai-search {
+        padding: 80px 0 120px 0;
+    }
+}
+
+/* ============================================
+   🖥️ PC版 - モバイルナビゲーション制御
+   ============================================ */
+
+/* PC版では通常時モバイルナビを非表示 */
+.mobile-nav-tabs {
+    display: none;
+}
+
+
+
+/* ============================================
+   📱 スマホ完全対応 - AI検索セクション
+   ============================================ */
+
+/* タブレット対応 (1024px以下) */
 @media (max-width: 1024px) {
     .ai-main-content {
         grid-template-columns: 1fr;
         gap: 30px;
+        min-height: auto;
     }
     
     .ai-assistant-panel {
-        height: 450px;
+        height: auto;
+        min-height: 500px;
+        max-height: none;
+        order: 1;
+    }
+    
+    .search-results-panel {
+        order: 2;
+        height: auto;
+        min-height: 400px;
+        max-height: none;
     }
     
     .section-container {
@@ -1979,95 +1929,74 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
 }
 
-@media (max-width: 640px) {
+/* スマホ対応 (768px以下) */
+@media (max-width: 768px) {
+    /* セクション全体 */
     .monochrome-ai-search {
-        padding: 60px 0;
+        padding: 60px 0 80px 0;
     }
     
+    .section-container {
+        padding: 0 20px;
+    }
+    
+    /* ヘッダー */
     .section-header {
         margin-bottom: 40px;
-    }
-    
-    .title-en {
-        font-size: 24px;
-    }
-    
-    .title-ja {
-        font-size: 18px;
-    }
-    
-    .quick-filters {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-        margin-bottom: 30px;
-    }
-    
-    .filter-chip {
-        padding: 8px 12px;
-        font-size: 11px;
-        border-width: 1.5px;
-    }
-    
-    .ai-main-content {
-        gap: 20px;
-    }
-    
-    .ai-assistant-panel {
-        height: 350px;
-        min-height: 350px;
-    }
-    
-    .assistant-chat {
-        min-height: 200px;
-    }
-    
-    /* Smart No Results - Mobile */
-    .smart-no-results {
-        padding: 40px 20px;
-    }
-    
-    .no-results-header .icon-circle {
-        width: 80px;
-        height: 80px;
-    }
-    
-    .no-results-header .icon-circle i {
-        font-size: 32px;
-    }
-    
-    .no-results-header h3 {
-        font-size: 20px;
-    }
-    
-    .suggestions-section {
-        padding: 20px;
-        margin-bottom: 30px;
-    }
-    
-    .tips-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .monochrome-ai-search {
-        padding: 80px 0;
-    }
-    
-    .section-header {
-        margin-bottom: 50px;
     }
     
     .title-en {
         font-size: 28px;
     }
     
+    .title-ja {
+        font-size: 14px;
+    }
+    
+    .section-description {
+        font-size: 14px;
+    }
+    
+    /* 検索バー */
+    .ai-search-bar {
+        margin-bottom: 30px;
+    }
+    
+    .search-input-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        padding: 16px 20px;
+        font-size: 15px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .search-actions {
+        padding: 12px 16px;
+        justify-content: space-between;
+        border-top: none;
+    }
+    
+    .voice-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .search-btn {
+        flex: 1;
+        height: 44px;
+        padding: 0 24px;
+        margin-left: 12px;
+    }
+    
+    /* フィルター */
     .quick-filters {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
-        margin-bottom: 40px;
-        padding: 0;
+        margin-bottom: 30px;
     }
     
     .filter-chip {
@@ -2078,168 +2007,250 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         text-overflow: ellipsis;
     }
     
-    .featured-grants,
-    .results-container {
-        grid-template-columns: 1fr;
+    /* メインコンテンツ */
+    .ai-main-content {
         gap: 20px;
     }
     
-    .section-container {
-        padding: 0 20px;
+    /* 🔧 AIアシスタントパネル - スマホ最適化 */
+    .ai-assistant-panel {
+        height: auto;
+        min-height: 400px;
+        max-height: none;
+        display: flex;
+        flex-direction: column;
     }
     
-    /* Search Bar - Mobile */
-    .ai-search-bar {
-        margin-bottom: 30px;
+    /* 🔧 アシスタントヘッダー - コンパクト化 */
+    .assistant-header {
+        padding: 16px;
+        flex-wrap: wrap;
     }
     
-    .search-input-wrapper {
+    .assistant-avatar {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .avatar-icon {
+        font-size: 12px;
+    }
+    
+    .assistant-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .assistant-name {
+        font-size: 13px;
+    }
+    
+    .assistant-status {
+        font-size: 10px;
+    }
+    
+
+    
+    /* 🔧 チャットメッセージ - 高さ調整 */
+    .chat-messages {
+        flex: 1;
+        min-height: 250px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    .message-bubble {
+        padding: 16px 20px;
+        font-size: 14px;
+        line-height: 1.6;
+        max-width: 100%;
+        min-height: auto;
+    }
+    
+    /* 🔧 チャット入力エリア - 改善 */
+    .chat-input-area {
         padding: 12px 16px;
+        position: relative;
     }
     
-    .search-input {
+    .chat-input {
+        width: 100%;
+        padding: 12px 80px 12px 16px;
+        font-size: 14px;
+        min-height: 44px;
+        max-height: 120px;
+    }
+    
+    .chat-send-btn {
+        position: absolute;
+        right: 16px;
+        bottom: 12px;
+        width: auto;
+        height: 44px;
+        padding: 0 20px;
         font-size: 14px;
     }
     
-    .search-btn {
-        padding: 10px 20px;
+    /* 🔧 クイック質問 - 2列表示 */
+    .quick-questions {
+        padding: 12px 16px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
     }
     
-    .btn-text {
-        display: none;
+    .quick-q {
+        padding: 8px 12px;
+        font-size: 11px;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.3;
     }
     
-    .btn-icon {
-        margin: 0;
-    }
-
-    /* Grant Assistant Modal - Mobile */
-    .modal-content {
-        width: 95vw;
-        max-height: 90vh;
-        border-radius: 16px;
-    }
-
-    .modal-header {
+    /* 🔧 検索結果パネル - 高さ自動調整 */
+    .search-results-panel {
+        height: auto;
+        min-height: 400px;
+        max-height: none;
         padding: 16px;
     }
-
+    
+    .results-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    
+    .results-title {
+        font-size: 14px;
+        width: 100%;
+    }
+    
+    #results-count {
+        font-size: 20px;
+    }
+    
+    .view-controls {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    /* 🔧 グラントカード - スマホ最適化 */
+    .featured-grants,
+    .results-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .grant-card {
+        padding: 20px;
+    }
+    
+    .card-title {
+        font-size: 15px;
+        line-height: 1.5;
+    }
+    
+    .card-meta {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .meta-label {
+        font-size: 9px;
+    }
+    
+    .meta-value {
+        font-size: 13px;
+    }
+    
+    .card-org {
+        font-size: 12px;
+    }
+    
+    /* 🔧 カードアクション - 縦並び */
+    .card-actions {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .ai-assist-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 20px;
+        font-size: 13px;
+    }
+    
+    .card-link {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 12px 20px;
+        background: #000;
+        color: #fff;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+    
+    /* 🔧 Grant Assistant Modal - スマホ全画面 */
+    .modal-content {
+        width: 100vw;
+        max-width: 100vw;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+        margin: 0;
+    }
+    
+    .modal-header {
+        padding: 16px 20px;
+    }
+    
     .assistant-details h3 {
         font-size: 13px;
     }
-
+    
     .grant-title {
         font-size: 11px;
         max-width: 200px;
     }
-
+    
     .assistant-chat {
-        padding: 16px;
-        min-height: 150px;
-        max-height: 250px;
+        padding: 16px 20px;
+        min-height: 200px;
+        max-height: calc(100vh - 300px);
     }
-
+    
     .suggestion-buttons {
-        padding: 0 16px 12px;
+        padding: 0 20px 16px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
     }
-
+    
     .suggestion-btn {
         font-size: 11px;
-        padding: 6px 12px;
+        padding: 8px 12px;
+        white-space: normal;
+        text-align: center;
     }
-
-    .chat-input-area {
+    
+    .grant-chat-input {
+        font-size: 14px;
         padding: 12px 16px;
     }
-
-    .grant-chat-input {
-        font-size: 12px;
-        padding: 10px 14px;
-    }
-
+    
     .send-btn {
-        width: 36px;
-        height: 36px;
-    }
-
-    /* Card Actions - Mobile */
-    .card-actions {
-        flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
-    }
-
-    .ai-assist-btn {
-        justify-content: center;
-        padding: 10px 16px;
-    }
-
-    .card-link {
-        text-align: center;
-        justify-content: center;
-    }
-}
-
-/* Ultra-small mobile phones (375px and below) */
-@media (max-width: 375px) {
-    .monochrome-ai-search {
-        padding: 40px 0;
+        width: 40px;
+        height: 40px;
     }
     
-    .section-header {
-        margin-bottom: 30px;
-    }
-    
-    .title-en {
-        font-size: 20px;
-    }
-    
-    .title-ja {
-        font-size: 16px;
-    }
-    
-    .section-description {
-        font-size: 13px;
-    }
-    
-    .quick-filters {
-        gap: 6px;
-        margin-bottom: 20px;
-    }
-    
-    .filter-chip {
-        padding: 6px 10px;
-        font-size: 10px;
-    }
-    
-    .search-input-wrapper {
-        padding: 10px 12px;
-    }
-    
-    .search-input {
-        font-size: 13px;
-    }
-    
-    .search-btn {
-        padding: 8px 16px;
-    }
-    
-    .ai-main-content {
-        gap: 15px;
-    }
-    
-    .ai-assistant-panel {
-        height: 300px;
-        min-height: 300px;
-    }
-    
-    .section-container {
-        padding: 0 16px;
-    }
-    
-    /* Smart No Results - Ultra Small */
+    /* 🔧 No Results - スマホ最適化 */
     .smart-no-results {
-        padding: 30px 16px;
+        padding: 30px 20px;
     }
     
     .no-results-header .icon-circle {
@@ -2260,7 +2271,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     .suggestions-section {
-        padding: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
     
     .suggestions-section h4 {
@@ -2272,7 +2284,159 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         padding: 10px 16px;
         font-size: 13px;
     }
+    
+    .tips-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    /* Mobile Navigation Tabs - 💬🔍 Only */
+    .mobile-nav-tabs {
+        display: flex !important;
+        justify-content: center;
+        margin-bottom: 16px;
+        gap: 4px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: static !important;
+        transform: none !important;
+        z-index: auto !important;
+        backdrop-filter: none !important;
+        border: none !important;
+        left: auto !important;
+        top: auto !important;
+    }
+    
+    .nav-tab {
+        flex: 1;
+        padding: 8px 4px;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        min-width: auto !important;
+    }
+    
+    .nav-tab.active {
+        background: #000;
+        color: #fff;
+    }
+    
+    .nav-tab:hover {
+        background: #f0f0f0;
+    }
+    
+    .nav-tab.active:hover {
+        background: #000;
+    }
+    
+    .nav-tab-icon {
+        font-size: 16px;
+        line-height: 1;
+    }
 }
+
+/* 超小型スマホ対応 (375px以下) */
+@media (max-width: 375px) {
+    .monochrome-ai-search {
+        padding: 40px 0 60px 0;
+    }
+    
+    .section-container {
+        padding: 0 16px;
+    }
+    
+    .title-en {
+        font-size: 24px;
+    }
+    
+    .title-ja {
+        font-size: 12px;
+    }
+    
+    .search-input {
+        padding: 14px 16px;
+        font-size: 14px;
+    }
+    
+    .search-btn {
+        padding: 0 20px;
+        font-size: 13px;
+    }
+    
+    .filter-chip {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+    
+    .ai-assistant-panel {
+        min-height: 350px;
+    }
+    
+    .chat-messages {
+        min-height: 200px;
+        max-height: 300px;
+    }
+    
+    .message-bubble {
+        padding: 14px 16px;
+        font-size: 13px;
+    }
+    
+    .quick-questions {
+        grid-template-columns: 1fr;
+    }
+    
+    .grant-card {
+        padding: 16px;
+    }
+    
+    .card-title {
+        font-size: 14px;
+    }
+}
+
+/* 🔧 スクロール最適化 */
+@media (max-width: 768px) {
+    .chat-messages,
+    .assistant-chat,
+    .search-results-panel {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+    
+    /* スクロールバーを隠す（iOS Safari対応） */
+    .chat-messages::-webkit-scrollbar,
+    .assistant-chat::-webkit-scrollbar,
+    .search-results-panel::-webkit-scrollbar {
+        display: none;
+    }
+}
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </style>
 
 <script>
@@ -2427,6 +2591,14 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 
             // Voice input
             this.elements.voiceBtn?.addEventListener('click', this.startVoiceInput.bind(this));
+
+
+
+            // Mobile navigation tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => {
+                tab.addEventListener('click', this.handleNavTabClick.bind(this));
+            });
 
             // Click outside to close suggestions
             document.addEventListener('click', (e) => {
@@ -2606,9 +2778,23 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 return;
             }
 
-            container.innerHTML = grants.map(grant => this.createGrantCard(grant)).join('');
+            // Clear existing results first
+            container.innerHTML = '';
+            
+            // Create and append grant cards
+            const cardsHTML = grants.map(grant => this.createGrantCard(grant)).join('');
+            container.innerHTML = cardsHTML;
+            
+            // Ensure container is visible and scrollable
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.gap = '12px';
+            
             this.animateCards();
             this.bindGrantCardEvents();
+            
+            // Show results panel on mobile
+            this.showResultsOnMobile();
         }
 
         createGrantCard(grant) {
@@ -2722,10 +2908,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                     // Type AI response
                     this.typeMessage(data.data.response);
                     
-                    // 💾 Save chat history (提案4)
-                    if (typeof window.saveChatHistory === 'function') {
-                        window.saveChatHistory(message, data.data.response);
-                    }
+
                     
                     // Update search results if needed
                     if (data.data.related_grants) {
@@ -2856,10 +3039,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                     this.hideNotification();
                     this.performSearch();
                     
-                    // Save voice input history
-                    if (transcript) {
-                        this.saveVoiceHistory(transcript, event.results[0][0].confidence);
-                    }
+
                 }
             };
 
@@ -2890,25 +3070,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             recognition.start();
         }
 
-        // Save voice input history
-        async saveVoiceHistory(text, confidence) {
-            try {
-                const formData = new FormData();
-                formData.append('action', 'gi_voice_history');
-                formData.append('nonce', CONFIG.NONCE);
-                formData.append('session_id', CONFIG.SESSION_ID);
-                formData.append('text', text);
-                formData.append('confidence', confidence);
 
-                await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin'
-                });
-            } catch (error) {
-                console.error('Voice history save error:', error);
-            }
-        }
 
         // Notification system
         showNotification(message, type = 'info') {
@@ -3504,6 +3666,28 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             return indicator;
         }
 
+        // Enhanced method to show results on mobile
+        showResultsOnMobile() {
+            const isMobile = window.innerWidth <= 640;
+            if (!isMobile) return;
+            
+            const resultsTab = document.querySelector('[data-tab="results"]');
+            const resultsFab = document.getElementById('mobile-results-fab');
+            
+            // Show FAB if there are results
+            const hasResults = document.querySelectorAll('.grant-card').length > 0;
+            if (resultsFab) {
+                resultsFab.classList.toggle('show', hasResults);
+            }
+            
+            // Auto-switch to results tab if user just performed a search
+            if (resultsTab && hasResults) {
+                setTimeout(() => {
+                    resultsTab.click();
+                }, 800);
+            }
+        }
+
         // Utility Methods
         debounce(func, wait) {
             let timeout;
@@ -3537,6 +3721,32 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 console.error('AI Controller not found');
             }
         };
+
+        
+        handleNavTabClick(e) {
+            const tab = e.currentTarget;
+            const tabType = tab.dataset.tab;
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Show corresponding panel
+            this.showPanel(tabType);
+        }
+        
+        showPanel(panelType) {
+            // Hide all panels first
+            const aiPanel = document.querySelector('.ai-assistant-panel');
+            const resultsPanel = document.querySelector('.search-results-panel');
+            
+            if (aiPanel) aiPanel.style.display = panelType === 'chat' ? 'flex' : 'none';
+            if (resultsPanel) resultsPanel.style.display = panelType === 'search' ? 'block' : 'none';
+        }
     }
 
     // 🚨 緊急修正: 最低限の動作保証
@@ -3597,191 +3807,12 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         }, 500);
     });
 
-    // ============================================
-    // AI Chat History Management (提案4)
-    // ============================================
-    
-    /**
-     * チャット履歴をトグル表示
-     */
-    window.toggleChatHistory = function() {
-        const panel = document.getElementById('ai-history-panel');
-        if (!panel) return;
-        
-        if (panel.style.display === 'none' || !panel.style.display) {
-            loadChatHistory();
-            panel.style.display = 'block';
-        } else {
-            panel.style.display = 'none';
-        }
-    };
-    
-    /**
-     * チャット履歴を保存
-     */
-    window.saveChatHistory = function(question, answer) {
-        try {
-            let history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            
-            // 新しい会話を先頭に追加
-            history.unshift({
-                id: Date.now(),
-                question: question,
-                answer: answer,
-                timestamp: new Date().toISOString(),
-                date: new Date().toLocaleDateString('ja-JP', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-            });
-            
-            // 最新20件のみ保持
-            history = history.slice(0, 20);
-            localStorage.setItem('gi_chat_history', JSON.stringify(history));
-            
-            // バッジの数を更新
-            updateHistoryCount();
-            
-            console.log('Chat history saved:', history.length);
-        } catch (error) {
-            console.error('Error saving chat history:', error);
-        }
-    };
-    
-    /**
-     * チャット履歴を読み込んで表示
-     */
-    window.loadChatHistory = function() {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const listContainer = document.getElementById('ai-history-list');
-            
-            if (!listContainer) return;
-            
-            if (history.length === 0) {
-                listContainer.innerHTML = '<p class="ai-history-empty">履歴がありません</p>';
-                return;
-            }
-            
-            // 履歴アイテムを生成
-            listContainer.innerHTML = history.map((item, index) => `
-                <div class="ai-history-item" onclick="restoreConversation(${item.id})" data-index="${index}">
-                    <div class="history-date">${item.date}</div>
-                    <div class="history-question">${escapeHtml(item.question.substring(0, 80))}${item.question.length > 80 ? '...' : ''}</div>
-                </div>
-            `).join('');
-            
-            console.log('Chat history loaded:', history.length);
-        } catch (error) {
-            console.error('Error loading chat history:', error);
-        }
-    };
-    
-    /**
-     * チャット履歴をクリア
-     */
-    window.clearChatHistory = function() {
-        if (confirm('会話履歴を削除しますか？この操作は取り消せません。')) {
-            try {
-                localStorage.removeItem('gi_chat_history');
-                updateHistoryCount();
-                
-                const listContainer = document.getElementById('ai-history-list');
-                if (listContainer) {
-                    listContainer.innerHTML = '<p class="ai-history-empty">履歴がありません</p>';
-                }
-                
-                console.log('Chat history cleared');
-            } catch (error) {
-                console.error('Error clearing chat history:', error);
-            }
-        }
-    };
-    
-    /**
-     * 過去の会話を復元
-     */
-    window.restoreConversation = function(id) {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const conversation = history.find(item => item.id == id);
-            
-            if (!conversation) {
-                console.error('Conversation not found:', id);
-                return;
-            }
-            
-            const chatMessages = document.getElementById('chat-messages');
-            if (!chatMessages) return;
-            
-            // チャットメッセージをクリアして復元
-            chatMessages.innerHTML = `
-                <div class="message message-user" style="animation: messageIn 0.3s ease-out;">
-                    <div class="message-bubble">${escapeHtml(conversation.question)}</div>
-                </div>
-                <div class="message message-ai" style="animation: messageIn 0.3s ease-out;">
-                    <div class="message-bubble">${escapeHtml(conversation.answer)}</div>
-                </div>
-            `;
-            
-            // 最新のメッセージにスクロール
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // モーダルを開く（存在する場合）
-            const modal = document.getElementById('grant-assistant-modal');
-            if (modal) {
-                modal.classList.add('active');
-            }
-            
-            // 履歴パネルを閉じる
-            const panel = document.getElementById('ai-history-panel');
-            if (panel) {
-                panel.style.display = 'none';
-            }
-            
-            console.log('Conversation restored:', id);
-        } catch (error) {
-            console.error('Error restoring conversation:', error);
-        }
-    };
-    
-    /**
-     * 履歴カウントバッジを更新
-     */
-    function updateHistoryCount() {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const countBadge = document.querySelector('.history-count');
-            
-            if (countBadge) {
-                countBadge.textContent = history.length;
-                countBadge.style.display = history.length > 0 ? 'flex' : 'none';
-            }
-        } catch (error) {
-            console.error('Error updating history count:', error);
-        }
-    }
-    
-    /**
-     * HTML特殊文字をエスケープ
-     */
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // ページ読み込み時に履歴カウントを初期化
-    document.addEventListener('DOMContentLoaded', function() {
-        updateHistoryCount();
-        console.log('Chat history initialized');
-    });
-    
-    // チャットメッセージ送信後に履歴を保存（既存のsendChatMessage関数と連携）
-    // Note: AISearchController.sendChatMessage内でsaveChatHistory()を呼び出す必要があります
+
+
+
+
+
+
 
     // ============================================
     // 提案8: AI質問サジェスト機能強化
@@ -3796,13 +3827,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         
         if (!container) return;
         
-        // ユーザーの行動履歴を分析
-        const chatHistory = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-        const viewHistory = JSON.parse(localStorage.getItem('gi_view_history') || '[]');
-        const searchHistory = JSON.parse(localStorage.getItem('gi_search_history') || '[]');
-        
-        // コンテキストに基づいて質問を生成
-        const questions = analyzeAndGenerateQuestions(chatHistory, viewHistory, searchHistory);
+        // デフォルトの基本質問を使用
+        const questions = getDefaultQuestions();
         
         if (questions.length > 0) {
             // AIが生成した質問で置き換え
@@ -3836,140 +3862,17 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     /**
-     * コンテキストに基づいて質問を分析・生成
+     * デフォルトの基本質問を取得
      */
-    function analyzeAndGenerateQuestions(chatHistory, viewHistory, searchHistory) {
-        const questions = [];
-        
-        // デフォルトの基本質問
-        const defaultQuestions = [
+    function getDefaultQuestions() {
+        return [
             { question: '申請の流れを教えて', label: '申請の流れ', icon: 'fa-route', reason: '基本的な申請プロセス' },
             { question: '必要書類は？', label: '必要書類', icon: 'fa-file-alt', reason: '必要な提出書類' },
             { question: '締切はいつ？', label: '締切確認', icon: 'fa-clock', reason: '申請期限の確認' },
             { question: '採択率は？', label: '採択率', icon: 'fa-chart-line', reason: '採択される確率' }
         ];
-        
-        // 履歴がある場合、コンテキストベースの質問を生成
-        if (chatHistory.length > 0 || viewHistory.length > 0 || searchHistory.length > 0) {
-            // 最近の会話から関連質問を生成
-            const recentChat = chatHistory.slice(0, 3);
-            
-            // パターン1: 特定カテゴリーに興味がある
-            const categories = extractCategories(viewHistory);
-            if (categories.length > 0) {
-                const topCategory = categories[0];
-                questions.push({
-                    question: `${topCategory}の補助金で人気なのは？`,
-                    label: `${topCategory}の人気`,
-                    icon: 'fa-fire',
-                    reason: `${topCategory}への関心が高い`
-                });
-            }
-            
-            // パターン2: 金額に関心がある
-            if (searchHistory.some(s => s.includes('金額') || s.includes('万円') || s.includes('億円'))) {
-                questions.push({
-                    question: '最大助成額が大きい補助金を教えて',
-                    label: '高額助成金',
-                    icon: 'fa-coins',
-                    reason: '高額助成金への関心'
-                });
-            }
-            
-            // パターン3: 締切を気にしている
-            if (recentChat.some(c => c.question.includes('締切') || c.question.includes('期限'))) {
-                questions.push({
-                    question: '今すぐ申請できる補助金は？',
-                    label: '今すぐ申請可能',
-                    icon: 'fa-bolt',
-                    reason: '緊急性が高い'
-                });
-            }
-            
-            // パターン4: 地域に興味がある
-            const prefectures = extractPrefectures(viewHistory);
-            if (prefectures.length > 0) {
-                const topPref = prefectures[0];
-                questions.push({
-                    question: `${topPref}の補助金で申請しやすいのは？`,
-                    label: `${topPref}で申請しやすい`,
-                    icon: 'fa-map-marker-alt',
-                    reason: `${topPref}への地域的関心`
-                });
-            }
-            
-            // パターン5: 難易度を気にしている
-            if (recentChat.some(c => c.question.includes('難易度') || c.question.includes('簡単'))) {
-                questions.push({
-                    question: '初心者でも申請しやすい補助金は？',
-                    label: '初心者向け',
-                    icon: 'fa-graduation-cap',
-                    reason: '申請難易度への関心'
-                });
-            }
-            
-            // パターン6: 成功率を気にしている
-            if (recentChat.some(c => c.question.includes('採択') || c.question.includes('成功'))) {
-                questions.push({
-                    question: '採択率が高い補助金を教えて',
-                    label: '高採択率',
-                    icon: 'fa-trophy',
-                    reason: '採択率への関心'
-                });
-            }
-            
-            // パターン7: 複数回質問している
-            if (chatHistory.length >= 5) {
-                questions.push({
-                    question: '私に最適な補助金をAIで提案して',
-                    label: 'AIで最適化',
-                    icon: 'fa-brain',
-                    reason: 'パーソナライズされた提案'
-                });
-            }
-        }
-        
-        // 質問が4件未満の場合、デフォルトで補完
-        while (questions.length < 4) {
-            const remaining = defaultQuestions.filter(dq => 
-                !questions.some(q => q.question === dq.question)
-            );
-            if (remaining.length > 0) {
-                questions.push(remaining[0]);
-            } else {
-                break;
-            }
-        }
-        
-        // 最大4件に制限
-        return questions.slice(0, 4);
     }
-    
-    /**
-     * 履歴からカテゴリーを抽出
-     */
-    function extractCategories(history) {
-        const freq = {};
-        history.forEach(item => {
-            if (item.category) {
-                freq[item.category] = (freq[item.category] || 0) + 1;
-            }
-        });
-        return Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
-    }
-    
-    /**
-     * 履歴から都道府県を抽出
-     */
-    function extractPrefectures(history) {
-        const freq = {};
-        history.forEach(item => {
-            if (item.prefecture) {
-                freq[item.prefecture] = (freq[item.prefecture] || 0) + 1;
-            }
-        });
-        return Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
-    }
+
     
     // ページ読み込み時とユーザー操作後に質問を更新
     let questionUpdateTimeout;
@@ -4288,9 +4191,91 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         }, 4000);
     }
     
+    // Mobile Interface Management
+    function initMobileInterface() {
+        const isMobile = window.innerWidth <= 640;
+        if (!isMobile) return;
+        
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const chatPanel = document.querySelector('.ai-assistant-panel');
+        const resultsPanel = document.querySelector('.search-results-panel');
+        const resultsFab = document.getElementById('mobile-results-fab');
+        const resultsTab = document.querySelector('.results-tab');
+        
+        // Mobile navigation functionality
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabType = this.dataset.tab;
+                
+                // Update active tab
+                navTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show/hide panels
+                switch(tabType) {
+                    case 'chat':
+                        if (chatPanel) chatPanel.style.display = 'flex';
+                        if (resultsPanel) resultsPanel.classList.remove('active');
+                        break;
+                    case 'results':
+                        if (resultsPanel) {
+                            resultsPanel.classList.add('active');
+                            resultsPanel.style.display = 'block';
+                        }
+                        break;
+                    case 'search':
+                        // Scroll to search bar
+                        const searchBar = document.querySelector('.ai-search-bar');
+                        if (searchBar) {
+                            searchBar.scrollIntoView({ behavior: 'smooth' });
+                            const searchInput = searchBar.querySelector('.search-input');
+                            if (searchInput) searchInput.focus();
+                        }
+                        break;
+                }
+            });
+        });
+        
+        // Results FAB functionality
+        if (resultsFab && resultsPanel) {
+            resultsFab.addEventListener('click', function() {
+                resultsPanel.classList.toggle('active');
+                
+                // Update results tab count
+                const resultsCount = document.querySelectorAll('.grant-card').length;
+                if (resultsTab) {
+                    const countEl = resultsTab.querySelector('.results-tab-count');
+                    if (countEl) countEl.textContent = resultsCount;
+                }
+            });
+        }
+        
+        // Auto-hide mobile elements on desktop resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 640) {
+                if (resultsPanel) resultsPanel.classList.remove('active');
+                if (chatPanel) chatPanel.style.display = '';
+            }
+        });
+        
+        // Show results FAB when there are search results
+        const observer = new MutationObserver(function(mutations) {
+            const hasResults = document.querySelectorAll('.grant-card').length > 0;
+            if (resultsFab) {
+                resultsFab.classList.toggle('show', hasResults);
+            }
+        });
+        
+        const resultsContainer = document.getElementById('results-container');
+        if (resultsContainer) {
+            observer.observe(resultsContainer, { childList: true, subtree: true });
+        }
+    }
+    
     // Initialize speaker buttons for AI messages
     document.addEventListener('DOMContentLoaded', function() {
         addSpeakerButtonToAIMessages();
+        initMobileInterface();
         
         // Check browser support
         const chatInput = document.getElementById('chat-input');

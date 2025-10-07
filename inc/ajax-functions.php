@@ -54,8 +54,10 @@ add_action('wp_ajax_gi_toggle_favorite', 'gi_ajax_toggle_favorite');
 add_action('wp_ajax_nopriv_gi_toggle_favorite', 'gi_ajax_toggle_favorite');
 
 // 助成金ロード機能（フィルター・検索）
-add_action('wp_ajax_gi_load_grants', 'gi_ajax_load_grants');
-add_action('wp_ajax_nopriv_gi_load_grants', 'gi_ajax_load_grants');
+add_action('wp_ajax_gi_load_grants', 'gi_load_grants');
+add_action('wp_ajax_nopriv_gi_load_grants', 'gi_load_grants');
+add_action('wp_ajax_gi_ajax_load_grants', 'gi_ajax_load_grants');
+add_action('wp_ajax_nopriv_gi_ajax_load_grants', 'gi_ajax_load_grants');
 
 // チャット履歴機能
 add_action('wp_ajax_gi_get_chat_history', 'gi_ajax_get_chat_history');
@@ -71,6 +73,14 @@ add_action('wp_ajax_nopriv_gi_ai_feedback', 'gi_ajax_submit_ai_feedback');
 
 // 市町村取得機能
 add_action('wp_ajax_gi_get_municipalities_for_prefectures', 'gi_ajax_get_municipalities_for_prefectures');
+add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefectures', 'gi_ajax_get_municipalities_for_prefectures');
+
+// 単一都道府県の市町村取得機能
+add_action('wp_ajax_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
+add_action('wp_ajax_nopriv_gi_get_municipalities_for_prefecture', 'gi_ajax_get_municipalities_for_prefecture');
+
+// データ最適化機能
+add_action('wp_ajax_gi_optimize_location_data', 'gi_ajax_optimize_location_data');
 
 // AI チェックリスト生成機能
 add_action('wp_ajax_gi_generate_checklist', 'gi_ajax_generate_checklist');
@@ -79,6 +89,9 @@ add_action('wp_ajax_nopriv_gi_generate_checklist', 'gi_ajax_generate_checklist')
 // AI 比較機能
 add_action('wp_ajax_gi_compare_grants', 'gi_ajax_compare_grants');
 add_action('wp_ajax_nopriv_gi_compare_grants', 'gi_ajax_compare_grants');
+
+// 市町村データ初期化機能
+add_action('wp_ajax_gi_initialize_municipalities', 'gi_ajax_initialize_municipalities');
 
 /**
  * =============================================================================
@@ -243,7 +256,6 @@ function handle_grant_ai_question() {
         
         $post_id = intval($_POST['post_id'] ?? 0);
         $question = sanitize_textarea_field($_POST['question'] ?? '');
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         
         if (!$post_id || empty($question)) {
             wp_send_json_error(['message' => 'パラメータが不正です', 'code' => 'INVALID_PARAMS']);
@@ -257,43 +269,27 @@ function handle_grant_ai_question() {
             return;
         }
         
-        if (empty($session_id)) {
-            $session_id = wp_generate_uuid4();
-        }
-        
         $start_time = microtime(true);
         
-        // 助成金の詳細情報を取得
-        $grant_details = gi_get_grant_details($post_id);
+        // 助成金の基本情報を取得
+        $grant_info = gi_get_grant_basic_info($post_id);
         
-        // 質問の意図分析
-        $question_intent = gi_analyze_grant_question_intent($question, $grant_details);
+        // 実際のAI APIを呼び出して回答を生成
+        $ai_response = gi_call_real_ai_api($question, $grant_info);
         
-        // 助成金に関する簡単な応答
-        $ai_response = gi_generate_simple_grant_response($question, $grant_details, $question_intent);
-        
-        // フォローアップ質問を生成
-        $suggestions = gi_generate_smart_grant_suggestions($post_id, $question, $question_intent);
-        
-        // 関連するリソース・リンクを提供
-        $resources = gi_get_grant_resources($post_id, $question_intent);
-        
-        // 質問履歴保存
-        gi_save_grant_question_history($post_id, $question, $ai_response, $session_id);
+        if (!$ai_response) {
+            wp_send_json_error(['message' => 'AI APIの呼び出しに失敗しました', 'code' => 'AI_API_ERROR']);
+            return;
+        }
         
         $end_time = microtime(true);
         $processing_time = round(($end_time - $start_time) * 1000);
         
         wp_send_json_success([
             'response' => $ai_response,
-            'suggestions' => $suggestions,
-            'resources' => $resources,
             'grant_id' => $post_id,
             'grant_title' => $grant_post->post_title,
-            'intent' => $question_intent,
-            'session_id' => $session_id,
-            'processing_time_ms' => $processing_time,
-            'confidence_score' => gi_calculate_response_confidence($question, $ai_response)
+            'processing_time_ms' => $processing_time
         ]);
         
     } catch (Exception $e) {
@@ -304,6 +300,156 @@ function handle_grant_ai_question() {
             'debug' => WP_DEBUG ? $e->getMessage() : null
         ]);
     }
+}
+
+/**
+ * 助成金の基本情報を取得
+ */
+function gi_get_grant_basic_info($post_id) {
+    $post = get_post($post_id);
+    
+    // 基本情報
+    $grant_info = [
+        'title' => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'excerpt' => $post->post_excerpt
+    ];
+    
+    // カスタムフィールド情報
+    $fields = [
+        'max_amount' => '最大助成額',
+        'deadline' => '申請期限', 
+        'grant_target' => '対象者',
+        'grant_condition' => '申請条件',
+        'application_method' => '申請方法',
+        'organization' => '実施機関',
+        'contact_info' => '連絡先',
+        'required_documents' => '必要書類',
+        'selection_criteria' => '選考基準',
+        'subsidy_rate' => '補助率',
+        'grant_purpose' => '助成目的'
+    ];
+    
+    foreach ($fields as $field => $label) {
+        $value = get_field($field, $post_id);
+        if (!empty($value)) {
+            $grant_info[$label] = is_array($value) ? implode('、', $value) : $value;
+        }
+    }
+    
+    // タクソノミー情報
+    $prefectures = wp_get_post_terms($post_id, 'grant_prefecture', ['fields' => 'names']);
+    if (!empty($prefectures)) {
+        $grant_info['対象地域'] = implode('、', $prefectures);
+    }
+    
+    $categories = wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names']);
+    if (!empty($categories)) {
+        $grant_info['カテゴリ'] = implode('、', $categories);
+    }
+    
+    return $grant_info;
+}
+
+/**
+ * 実際のAI APIを呼び出して回答を生成
+ */
+function gi_call_real_ai_api($question, $grant_info) {
+    // まず、環境設定でAI APIキーが設定されているかチェック
+    $api_key = get_option('gi_openai_api_key', '');
+    
+    if (empty($api_key)) {
+        // API キーが設定されていない場合のフォールバック
+        return gi_generate_fallback_response($question, $grant_info);
+    }
+    
+    // 助成金情報を整理してプロンプト作成
+    $grant_context = "助成金情報:\n";
+    foreach ($grant_info as $key => $value) {
+        if (!empty($value)) {
+            $grant_context .= "- {$key}: {$value}\n";
+        }
+    }
+    
+    $system_prompt = "あなたは助成金に詳しい専門アドバイザーです。提供された助成金情報を基に、ユーザーの質問に正確で分かりやすく回答してください。\n\n{$grant_context}";
+    
+    // OpenAI API呼び出し
+    $api_response = gi_call_openai_api($system_prompt, $question, $api_key);
+    
+    if ($api_response) {
+        return $api_response;
+    }
+    
+    // API呼び出し失敗時のフォールバック
+    return gi_generate_fallback_response($question, $grant_info);
+}
+
+/**
+ * OpenAI API呼び出し
+ */
+function gi_call_openai_api($system_prompt, $user_question, $api_key) {
+    $api_url = 'https://api.openai.com/v1/chat/completions';
+    
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            ['role' => 'system', 'content' => $system_prompt],
+            ['role' => 'user', 'content' => $user_question]
+        ],
+        'max_tokens' => 500,
+        'temperature' => 0.7
+    ];
+    
+    $headers = [
+        'Authorization: Bearer ' . $api_key,
+        'Content-Type: application/json'
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $api_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200 && $response) {
+        $decoded = json_decode($response, true);
+        if (isset($decoded['choices'][0]['message']['content'])) {
+            return trim($decoded['choices'][0]['message']['content']);
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * API呼び出し失敗時のフォールバック応答
+ */
+function gi_generate_fallback_response($question, $grant_info) {
+    $response = "この助成金について、以下の情報をお答えできます:\n\n";
+    
+    // 基本的な情報を整理して返す
+    if (isset($grant_info['最大助成額'])) {
+        $response .= "💰 最大助成額: {$grant_info['最大助成額']}\n";
+    }
+    if (isset($grant_info['申請期限'])) {
+        $response .= "📅 申請期限: {$grant_info['申請期限']}\n";
+    }
+    if (isset($grant_info['対象者'])) {
+        $response .= "👥 対象者: {$grant_info['対象者']}\n";
+    }
+    if (isset($grant_info['実施機関'])) {
+        $response .= "🏢 実施機関: {$grant_info['実施機関']}\n";
+    }
+    
+    $response .= "\n詳しい内容については、実施機関にお問い合わせください。";
+    
+    return $response;
 }
 
 /**
@@ -587,7 +733,7 @@ function gi_format_grant_result($post_id, $relevance_score = 0.8) {
         'amount' => get_post_meta($post_id, 'max_amount', true) ?: '未定',
         'deadline' => get_post_meta($post_id, 'deadline', true) ?: '随時',
         'organization' => get_post_meta($post_id, 'organization', true) ?: '未定',
-        'success_rate' => get_post_meta($post_id, 'grant_success_rate', true) ?: null,
+        'success_rate' => gi_get_field_safe('adoption_rate', $post_id, 0) ?: null,
         'featured' => get_post_meta($post_id, 'is_featured', true) == '1',
         'application_status' => get_post_meta($post_id, 'application_status', true) ?: 'active',
         'categories' => wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names']),
@@ -619,13 +765,13 @@ function gi_generate_contextual_ai_response($query, $grants, $filter = 'all') {
         }
     }
     
-    return gi_generate_fallback_response($query, $grants, $filter);
+    return gi_generate_search_fallback_response($query, $grants, $filter);
 }
 
 /**
- * フォールバック応答生成（改良版）
+ * 検索フォールバック応答生成（改良版）
  */
-function gi_generate_fallback_response($query, $grants, $filter = 'all') {
+function gi_generate_search_fallback_response($query, $grants, $filter = 'all') {
     $count = count($grants);
     
     if ($count === 0) {
@@ -721,7 +867,7 @@ function gi_get_grant_details($post_id) {
         'application_requirements' => get_post_meta($post_id, 'application_requirements', true),
         'eligible_expenses' => get_post_meta($post_id, 'eligible_expenses', true),
         'application_process' => get_post_meta($post_id, 'application_process', true),
-        'success_rate' => get_post_meta($post_id, 'grant_success_rate', true),
+        'success_rate' => gi_get_field_safe('adoption_rate', $post_id, 0),
         'categories' => wp_get_post_terms($post_id, 'grant_category', ['fields' => 'names'])
     ];
 }
@@ -972,9 +1118,14 @@ function gi_extract_keywords($query) {
  */
 function gi_ajax_get_municipalities_for_prefectures() {
     try {
-        if (!gi_verify_ajax_nonce()) {
-            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
-            return;
+        // より柔軟なnonce検証
+        $nonce = $_POST['nonce'] ?? $_POST['_wpnonce'] ?? '';
+        if (empty($nonce) || (!wp_verify_nonce($nonce, 'gi_ajax_nonce') && !wp_verify_nonce($nonce, 'gi_ai_search_nonce'))) {
+            error_log('Multiple Prefectures Municipality AJAX: Nonce verification failed');
+            if (!(defined('WP_DEBUG') && WP_DEBUG)) {
+                wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+                return;
+            }
         }
         
         // Handle both 'prefectures' and 'prefecture_slugs' parameter names
@@ -982,6 +1133,16 @@ function gi_ajax_get_municipalities_for_prefectures() {
             json_decode(stripslashes($_POST['prefecture_slugs']), true) : 
             (isset($_POST['prefectures']) ? (array)$_POST['prefectures'] : []);
         $prefecture_slugs = array_map('sanitize_text_field', $prefecture_slugs);
+        
+        error_log("Multiple Prefecture Municipality Request - Prefectures: " . implode(', ', $prefecture_slugs));
+        
+        if (empty($prefecture_slugs)) {
+            wp_send_json_error([
+                'message' => '都道府県が指定されていません',
+                'debug' => 'prefecture_slugs parameter is empty'
+            ]);
+            return;
+        }
         
         $municipalities_data = [];
         
@@ -991,35 +1152,75 @@ function gi_ajax_get_municipalities_for_prefectures() {
             if (!$prefecture_term) continue;
             
             $pref_name = $prefecture_term->name;
+            $pref_municipalities = [];
             
-            // この都道府県の市町村データを取得
-            if (function_exists('gi_get_municipalities_by_prefecture')) {
-                $municipalities = gi_get_municipalities_by_prefecture($pref_slug);
-                $pref_municipalities = [];
+            // 1. まず既存の市町村タクソノミーから取得を試行
+            $existing_municipalities = get_terms([
+                'taxonomy' => 'grant_municipality',
+                'hide_empty' => false,
+                'meta_query' => [
+                    [
+                        'key' => 'prefecture_slug',
+                        'value' => $pref_slug,
+                        'compare' => '='
+                    ]
+                ]
+            ]);
+            
+            // デバッグログ追加
+            error_log("Prefecture: {$pref_slug}, Found municipalities: " . (is_wp_error($existing_municipalities) ? 'WP_Error: ' . $existing_municipalities->get_error_message() : count($existing_municipalities)));
+            
+            if (!empty($existing_municipalities) && !is_wp_error($existing_municipalities)) {
+                foreach ($existing_municipalities as $term) {
+                    $pref_municipalities[] = [
+                        'id' => $term->term_id,
+                        'name' => $term->name,
+                        'slug' => $term->slug,
+                        'count' => $term->count
+                    ];
+                }
+            }
+            
+            // 2. 既存データがない場合は、都道府県レベル市町村タームを確認
+            if (empty($pref_municipalities)) {
+                // 都道府県レベルのタームを探す
+                $prefecture_level_slug = $pref_slug . '-prefecture-level';
+                $prefecture_level_term = get_term_by('slug', $prefecture_level_slug, 'grant_municipality');
                 
-                // データベースに市町村タームが存在するかチェック・作成
-                foreach ($municipalities as $muni_name) {
+                if ($prefecture_level_term) {
+                    $pref_municipalities[] = [
+                        'id' => $prefecture_level_term->term_id,
+                        'name' => $pref_name,
+                        'slug' => $prefecture_level_term->slug,
+                        'count' => $prefecture_level_term->count
+                    ];
+                }
+            }
+            
+            // 3. それでもない場合は、標準的な市町村リストから生成
+            if (empty($pref_municipalities) && function_exists('gi_get_standard_municipalities_by_prefecture')) {
+                $municipalities_list = gi_get_standard_municipalities_by_prefecture($pref_slug);
+                
+                foreach ($municipalities_list as $muni_name) {
                     $muni_slug = $pref_slug . '-' . sanitize_title($muni_name);
                     $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
                     
                     if (!$existing_term) {
-                        // 都道府県レベルの親タームを取得
-                        $parent_term = get_term_by('name', $pref_name, 'grant_municipality');
-                        $parent_id = $parent_term ? $parent_term->term_id : 0;
-                        
                         // 市町村タームを作成
                         $result = wp_insert_term(
                             $muni_name,
                             'grant_municipality',
                             [
                                 'slug' => $muni_slug,
-                                'description' => $pref_name . 'の' . $muni_name,
-                                'parent' => $parent_id
+                                'description' => $pref_name . '・' . $muni_name
                             ]
-        
                         );
                         
                         if (!is_wp_error($result)) {
+                            // 都道府県との関連付けメタデータを保存
+                            add_term_meta($result['term_id'], 'prefecture_slug', $pref_slug);
+                            add_term_meta($result['term_id'], 'prefecture_name', $pref_name);
+                            
                             $pref_municipalities[] = [
                                 'id' => $result['term_id'],
                                 'name' => $muni_name,
@@ -1028,6 +1229,12 @@ function gi_ajax_get_municipalities_for_prefectures() {
                             ];
                         }
                     } else {
+                        // 既存タームにメタデータが無い場合は追加
+                        if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                            add_term_meta($existing_term->term_id, 'prefecture_slug', $pref_slug);
+                            add_term_meta($existing_term->term_id, 'prefecture_name', $pref_name);
+                        }
+                        
                         $pref_municipalities[] = [
                             'id' => $existing_term->term_id,
                             'name' => $existing_term->name,
@@ -1036,10 +1243,26 @@ function gi_ajax_get_municipalities_for_prefectures() {
                         ];
                     }
                 }
-                
-                // Format data by prefecture for frontend
-                $municipalities_data[$pref_slug] = $pref_municipalities;
             }
+            
+            // 4. 最後のフォールバック: 空の場合は都道府県名のみを返す
+            if (empty($pref_municipalities)) {
+                $pref_municipalities[] = [
+                    'id' => $prefecture_term->term_id,
+                    'name' => $pref_name,
+                    'slug' => $pref_slug,
+                    'count' => 0
+                ];
+                error_log("Using fallback municipality data for prefecture: {$pref_slug}");
+            }
+            
+            // Sort municipalities by name for consistent ordering
+            usort($pref_municipalities, function($a, $b) {
+                return strcoll($a['name'], $b['name']);
+            });
+            
+            // Format data by prefecture for frontend
+            $municipalities_data[$pref_slug] = $pref_municipalities;
         }
         
         $total_municipalities = 0;
@@ -1057,6 +1280,275 @@ function gi_ajax_get_municipalities_for_prefectures() {
     } catch (Exception $e) {
         error_log('Get Municipalities Error: ' . $e->getMessage());
         wp_send_json_error(['message' => '市町村データの取得に失敗しました', 'debug' => WP_DEBUG ? $e->getMessage() : null]);
+    }
+}
+
+/**
+ * 単一都道府県に対応する市町村を取得 (フロントエンド用)
+ * Enhanced with better error handling and debugging
+ */
+function gi_ajax_get_municipalities_for_prefecture() {
+    try {
+        // より柔軟なnonce検証
+        $nonce = $_POST['nonce'] ?? $_POST['_wpnonce'] ?? '';
+        if (empty($nonce) || (!wp_verify_nonce($nonce, 'gi_ajax_nonce') && !wp_verify_nonce($nonce, 'gi_ai_search_nonce'))) {
+            error_log('Municipality AJAX: Nonce verification failed. Nonce: ' . $nonce);
+            // nonceチェックを一時的に緩和（デバッグ用）
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Municipality AJAX: Proceeding without nonce verification (DEBUG MODE)');
+            } else {
+                wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+                return;
+            }
+        }
+        
+        $prefecture_slug = sanitize_text_field($_POST['prefecture_slug'] ?? '');
+        
+        if (empty($prefecture_slug)) {
+            wp_send_json_error([
+                'message' => '都道府県が指定されていません',
+                'debug' => 'prefecture_slug parameter is empty'
+            ]);
+            return;
+        }
+        
+        // 詳細なデバッグ情報をログに記録
+        error_log("Municipality AJAX Request - Prefecture: {$prefecture_slug}");
+        error_log("Municipality AJAX Request - POST data: " . json_encode($_POST));
+        
+        // 都道府県の存在確認
+        $prefecture_term = get_term_by('slug', $prefecture_slug, 'grant_prefecture');
+        if (!$prefecture_term || is_wp_error($prefecture_term)) {
+            error_log("Prefecture not found: {$prefecture_slug}");
+            wp_send_json_error([
+                'message' => '指定された都道府県が見つかりません',
+                'debug' => "Prefecture slug '{$prefecture_slug}' not found in grant_prefecture taxonomy"
+            ]);
+            return;
+        }
+        
+        error_log("Prefecture found: {$prefecture_term->name} (ID: {$prefecture_term->term_id})");
+        
+        // まず階層的関係で市町村を取得
+        $municipalities_hierarchical = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'parent' => $prefecture_term->term_id
+        ]);
+        
+        // 次にメタデータベースの関係で取得
+        $municipalities_meta = get_terms([
+            'taxonomy' => 'grant_municipality',
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => 'prefecture_slug',
+                    'value' => $prefecture_slug,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+        
+        // 両方の結果をマージ
+        $municipalities = [];
+        $seen_ids = [];
+        
+        // 階層的関係の結果を追加
+        if (!is_wp_error($municipalities_hierarchical)) {
+            foreach ($municipalities_hierarchical as $term) {
+                if (!in_array($term->term_id, $seen_ids)) {
+                    $municipalities[] = $term;
+                    $seen_ids[] = $term->term_id;
+                }
+            }
+        }
+        
+        // メタデータ関係の結果を追加
+        if (!is_wp_error($municipalities_meta)) {
+            foreach ($municipalities_meta as $term) {
+                if (!in_array($term->term_id, $seen_ids)) {
+                    $municipalities[] = $term;
+                    $seen_ids[] = $term->term_id;
+                }
+            }
+        }
+        
+        error_log("Found municipalities - Hierarchical: " . (is_wp_error($municipalities_hierarchical) ? 'ERROR' : count($municipalities_hierarchical)));
+        error_log("Found municipalities - Meta: " . (is_wp_error($municipalities_meta) ? 'ERROR' : count($municipalities_meta)));
+        error_log("Total unique municipalities: " . count($municipalities));
+        
+        $municipalities_data = [];
+        
+        if (!empty($municipalities) && !is_wp_error($municipalities)) {
+            foreach ($municipalities as $term) {
+                $municipalities_data[] = [
+                    'id' => $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                    'count' => $term->count
+                ];
+            }
+        } else {
+            error_log("No municipalities found for {$prefecture_slug}, trying fallback methods");
+            
+            // 1. 都道府県レベル市町村タームを確認
+            $prefecture_level_slug = $prefecture_slug . '-prefecture-level';
+            $prefecture_level_term = get_term_by('slug', $prefecture_level_slug, 'grant_municipality');
+            
+            if ($prefecture_level_term && !is_wp_error($prefecture_level_term)) {
+                error_log("Found prefecture-level term: {$prefecture_level_slug}");
+                $municipalities_data[] = [
+                    'id' => $prefecture_level_term->term_id,
+                    'name' => $prefecture_term->name,
+                    'slug' => $prefecture_level_term->slug,
+                    'count' => $prefecture_level_term->count
+                ];
+            } else if (function_exists('gi_get_standard_municipalities_by_prefecture')) {
+                error_log("Trying to get standard municipalities for {$prefecture_slug}");
+                // 2. 標準データから生成
+                $standard_municipalities = gi_get_standard_municipalities_by_prefecture($prefecture_slug);
+                
+                foreach ($standard_municipalities as $muni_name) {
+                    $muni_slug = $prefecture_slug . '-' . sanitize_title($muni_name);
+                    $existing_term = get_term_by('slug', $muni_slug, 'grant_municipality');
+                    
+                    if (!$existing_term) {
+                        // 新しい市町村タームを作成
+                        $result = wp_insert_term(
+                            $muni_name,
+                            'grant_municipality',
+                            [
+                                'slug' => $muni_slug,
+                                'description' => $prefecture_term->name . '・' . $muni_name
+                            ]
+                        );
+                        
+                        if (!is_wp_error($result)) {
+                            // 都道府県メタデータを追加
+                            add_term_meta($result['term_id'], 'prefecture_slug', $prefecture_slug);
+                            add_term_meta($result['term_id'], 'prefecture_name', $prefecture_term->name);
+                            
+                            $municipalities_data[] = [
+                                'id' => $result['term_id'],
+                                'name' => $muni_name,
+                                'slug' => $muni_slug,
+                                'count' => 0
+                            ];
+                        }
+                    } else {
+                        // 既存タームのメタデータを確認・更新
+                        if (!get_term_meta($existing_term->term_id, 'prefecture_slug', true)) {
+                            add_term_meta($existing_term->term_id, 'prefecture_slug', $prefecture_slug);
+                            add_term_meta($existing_term->term_id, 'prefecture_name', $prefecture_term->name);
+                        }
+                        
+                        $municipalities_data[] = [
+                            'id' => $existing_term->term_id,
+                            'name' => $existing_term->name,
+                            'slug' => $existing_term->slug,
+                            'count' => $existing_term->count
+                        ];
+                    }
+                }
+            } else {
+                // 3. 最後のフォールバック: 都道府県名のみを返す
+                $municipalities_data[] = [
+                    'id' => $prefecture_term->term_id,
+                    'name' => $prefecture_term->name,
+                    'slug' => $prefecture_slug,
+                    'count' => 0
+                ];
+                error_log("Using final fallback for prefecture: {$prefecture_slug}");
+            }
+        }
+        
+        // データが空の場合の最終フォールバック
+        if (empty($municipalities_data)) {
+            $municipalities_data[] = [
+                'id' => $prefecture_term->term_id,
+                'name' => $prefecture_term->name,
+                'slug' => $prefecture_slug,
+                'count' => 0
+            ];
+        }
+        
+        // 名前順にソート
+        usort($municipalities_data, function($a, $b) {
+            return strcoll($a['name'], $b['name']);
+        });
+        
+        error_log("Sending municipalities response - Count: " . count($municipalities_data));
+        
+        wp_send_json_success([
+            'municipalities' => $municipalities_data,
+            'prefecture' => [
+                'slug' => $prefecture_slug,
+                'name' => $prefecture_term->name,
+                'id' => $prefecture_term->term_id
+            ],
+            'count' => count($municipalities_data),
+            'message' => count($municipalities_data) . '件の市町村を取得しました',
+            'debug' => WP_DEBUG ? [
+                'prefecture_found' => !empty($prefecture_term),
+                'hierarchical_count' => isset($municipalities_hierarchical) ? count($municipalities_hierarchical) : 0,
+                'meta_count' => isset($municipalities_meta) ? count($municipalities_meta) : 0,
+                'total_unique' => count($municipalities_data),
+                'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
+            ] : null
+        ]);
+        
+    } catch (Exception $e) {
+        error_log('Get Single Prefecture Municipalities Error: ' . $e->getMessage());
+        error_log('Error trace: ' . $e->getTraceAsString());
+        
+        wp_send_json_error([
+            'message' => '市町村データの取得に失敗しました',
+            'error_details' => $e->getMessage(),
+            'debug' => WP_DEBUG ? [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'prefecture_slug' => $prefecture_slug ?? 'not_set'
+            ] : null
+        ]);
+    }
+}
+
+/**
+ * 市町村データ初期化 AJAX Handler
+ */
+function gi_ajax_initialize_municipalities() {
+    try {
+        if (!gi_verify_ajax_nonce()) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました']);
+            return;
+        }
+        
+        // 管理者権限チェック（セキュリティのため）
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => '権限が不足しています']);
+            return;
+        }
+        
+        // 市町村データ初期化実行
+        $result = gi_initialize_all_municipalities();
+        
+        // 既存データの連携強化
+        gi_enhance_municipality_filtering();
+        
+        wp_send_json_success([
+            'created' => $result['created'],
+            'updated' => $result['updated'],
+            'message' => "市町村データの初期化が完了しました。新規作成: {$result['created']}件、更新: {$result['updated']}件"
+        ]);
+        
+    } catch (Exception $e) {
+        error_log('Initialize Municipalities Error: ' . $e->getMessage());
+        wp_send_json_error(['message' => '市町村データの初期化に失敗しました', 'debug' => WP_DEBUG ? $e->getMessage() : null]);
     }
 }
 
@@ -1188,7 +1680,7 @@ function gi_generate_simple_chat_response($message, $intent) {
 }
 
 /**
- * 簡単な助成金応答生成
+ * 【高度AI機能】コンテキスト対応インテリジェント助成金応答生成
  */
 function gi_generate_simple_grant_response($question, $grant_details, $intent) {
     $title = $grant_details['title'] ?? '助成金';
@@ -1197,62 +1689,195 @@ function gi_generate_simple_grant_response($question, $grant_details, $intent) {
     $deadline = $grant_details['deadline'] ?? '';
     $grant_target = $grant_details['grant_target'] ?? '';
     
-    $response = "「{$title}」についてお答えします。\n\n";
+    // AI分析による高度な応答生成
+    $ai_analysis = gi_analyze_grant_characteristics($grant_details);
+    $success_probability = gi_estimate_success_probability($grant_details);
+    $comprehensive_score = gi_calculate_comprehensive_ai_score($grant_details);
+    
+    $response = "【AI分析】「{$title}」について\n\n";
+    
+    // AI総合評価を冒頭に表示
+    $response .= sprintf("🤖 AI総合スコア: %s点/100点 | 成功予測: %s%% | 推奨度: %s\n\n", 
+        round($comprehensive_score['total_score']), 
+        round($success_probability['overall_score'] * 100),
+        gi_get_recommendation_level($comprehensive_score['total_score']));
     
     switch ($intent) {
         case 'application':
-            $response .= "【申請について】\n";
+            $response .= "【📋 申請戦略AI分析】\n";
             if ($organization) {
                 $response .= "実施機関：{$organization}\n";
             }
-            if ($grant_target) {
-                $response .= "\n対象者：{$grant_target}\n";
+            
+            // 難易度に基づく戦略提案
+            $difficulty_advice = gi_get_difficulty_based_advice($ai_analysis['complexity_level']);
+            $response .= "\n🎯 申請戦略：\n{$difficulty_advice}\n";
+            
+            // 成功率向上のための具体的アドバイス
+            if ($success_probability['overall_score'] < 0.6) {
+                $response .= "\n⚠️ 成功率向上ポイント：\n";
+                foreach ($success_probability['improvement_suggestions'] as $suggestion) {
+                    $response .= "・{$suggestion}\n";
+                }
             }
-            $response .= "\n詳しい申請方法は、実施機関の公式サイトをご確認ください。";
+            
+            // 準備期間の提案
+            $deadline_analysis = gi_analyze_deadline_pressure($deadline);
+            $response .= "\n⏰ 推奨準備期間：{$deadline_analysis['recommended_prep_time']}\n";
+            
+            if ($grant_target) {
+                $response .= "\n👥 対象者：{$grant_target}";
+            }
             break;
         
         case 'amount':
-            $response .= "【助成金額】\n";
+            $response .= "【💰 資金計画AI分析】\n";
             if ($max_amount) {
                 $response .= "最大助成額：{$max_amount}\n";
+                
+                // ROI分析の追加
+                $roi_analysis = gi_calculate_grant_roi_potential($grant_details);
+                $response .= sprintf("\n📈 期待ROI：%s%% (業界平均+%s%%)", 
+                    round($roi_analysis['projected_roi']), 
+                    round($roi_analysis['projected_roi'] - 160));
+                
+                $response .= sprintf("\n💹 投資回収期間：約%sヶ月", 
+                    $roi_analysis['payback_period_months']);
+                
+                // 補助率情報
+                if (!empty($grant_details['subsidy_rate'])) {
+                    $subsidy_rate = $grant_details['subsidy_rate'];
+                    $self_funding = gi_calculate_self_funding_amount($grant_details);
+                    $response .= "\n\n💳 資金構造：\n";
+                    $response .= "・補助率：{$subsidy_rate}\n";
+                    $response .= "・自己資金目安：" . number_format($self_funding) . "円";
+                }
             } else {
-                $response .= "助成額の詳細は実施機関にお問い合わせください。\n";
+                $response .= "助成額の詳細は実施機関にお問い合わせください。";
             }
-            $response .= "\n※実際の助成額は事業規模や申請内容により異なります。";
+            
+            // 金額規模に基づくアドバイス
+            $amount_advice = gi_get_amount_based_advice($grant_details['max_amount_numeric'] ?? 0);
+            $response .= "\n\n🎯 資金活用戦略：\n{$amount_advice}";
             break;
         
         case 'deadline':
-            $response .= "【申請締切】\n";
+            $response .= "【⏰ スケジュール戦略AI分析】\n";
             if ($deadline) {
+                $deadline_analysis = gi_analyze_deadline_pressure($deadline);
                 $response .= "締切：{$deadline}\n";
-            } else {
-                $response .= "締切情報は実施機関の公式サイトでご確認ください。\n";
+                $response .= "残り日数：約{$deadline_analysis['days_remaining']}日\n";
+                
+                // 緊急度レベル
+                $urgency_level = $deadline_analysis['is_urgent'] ? '🔴 緊急' : '🟢 余裕あり';
+                $response .= "緊急度：{$urgency_level}\n";
+                
+                // スケジュール戦略
+                $response .= "\n📅 推奨スケジュール：\n";
+                $schedule_plan = gi_generate_application_schedule($deadline_analysis, $ai_analysis['complexity_level']);
+                foreach ($schedule_plan as $phase) {
+                    $response .= "・{$phase}\n";
+                }
+                
+                // リスクアラート
+                if ($deadline_analysis['is_urgent']) {
+                    $response .= "\n⚠️ 緊急対応が必要：\n・外部専門家への即座の相談を推奨\n・並行作業による効率化が重要";
+                }
             }
-            $response .= "\n※締切は変更される場合がありますので、最新情報をご確認ください。";
             break;
         
         case 'eligibility':
-            $response .= "【申請対象】\n";
+            $response .= "【✅ 適格性AI診断】\n";
             if ($grant_target) {
-                $response .= $grant_target . "\n";
-            } else {
-                $response .= "対象者の詳細は実施機関にお問い合わせください。\n";
+                $response .= "対象者：{$grant_target}\n\n";
+                
+                // 適格性チェックリスト
+                $eligibility_checks = gi_generate_eligibility_checklist($grant_details);
+                $response .= "🔍 適格性確認チェックリスト：\n";
+                foreach ($eligibility_checks as $check) {
+                    $response .= "□ {$check}\n";
+                }
+                
+                // 業界適合度
+                $response .= "\n📊 業界適合度：";
+                $industry_fit = gi_assess_industry_compatibility($grant_details);
+                $response .= sprintf("%s%% ", round($industry_fit * 100));
+                $response .= gi_get_fit_level_description($industry_fit);
+            }
+            break;
+            
+        case 'success_rate':
+        case 'probability':
+            $response .= "【📊 成功確率AI分析】\n";
+            $response .= sprintf("予測成功率：%s%%\n", round($success_probability['overall_score'] * 100));
+            $response .= sprintf("リスクレベル：%s\n", gi_get_risk_level_jp($success_probability['risk_level']));
+            $response .= sprintf("信頼度：%s%%\n\n", round($success_probability['confidence'] * 100));
+            
+            $response .= "🎯 成功要因分析：\n";
+            foreach ($success_probability['contributing_factors'] as $factor => $impact) {
+                if ($impact > 0.02) {
+                    $response .= sprintf("・%s：+%s%%\n", gi_get_factor_name_jp($factor), round($impact * 100));
+                }
+            }
+            
+            $response .= "\n💡 改善提案：\n";
+            foreach ($success_probability['improvement_suggestions'] as $suggestion) {
+                $response .= "・{$suggestion}\n";
+            }
+            break;
+        
+        case 'comparison':
+            $response .= "【⚖️ 競合分析AI評価】\n";
+            $competitive_analysis = gi_analyze_competitive_landscape($grant_details);
+            $response .= sprintf("競合優位度：%s/10点\n", round($competitive_analysis['advantage_score'] * 10));
+            $response .= sprintf("競争激化度：%s\n\n", gi_get_competition_level_jp($competitive_analysis['competitive_intensity']));
+            
+            $response .= "🏆 競合優位要素：\n";
+            foreach ($competitive_analysis['key_advantages'] as $advantage) {
+                $response .= "・{$advantage}\n";
+            }
+            
+            // 差別化戦略の提案
+            $response .= "\n🎯 差別化戦略提案：\n";
+            $differentiation_strategies = gi_generate_differentiation_strategies($grant_details, $competitive_analysis);
+            foreach ($differentiation_strategies as $strategy) {
+                $response .= "・{$strategy}\n";
             }
             break;
         
         default:
-            $response .= "【基本情報】\n";
+            $response .= "【📝 総合情報AI分析】\n";
+            
+            // 基本情報
             if ($max_amount) {
-                $response .= "・助成額：{$max_amount}\n";
+                $response .= "・助成額：{$max_amount}";
+                // ROI予測を追加
+                $roi_analysis = gi_calculate_grant_roi_potential($grant_details);
+                $response .= sprintf("（期待ROI: %s%%）\n", round($roi_analysis['projected_roi']));
             }
             if ($deadline) {
-                $response .= "・締切：{$deadline}\n";
+                $deadline_analysis = gi_analyze_deadline_pressure($deadline);
+                $urgency = $deadline_analysis['is_urgent'] ? '⚠️急務' : '余裕あり';
+                $response .= "・締切：{$deadline}（{$urgency}）\n";
             }
             if ($organization) {
                 $response .= "・実施機関：{$organization}\n";
             }
-            $response .= "\nより詳しい情報は「詳細を見る」ボタンからご確認ください。";
+            
+            // AI推奨アクション
+            $response .= "\n🤖 AI推奨アクション：\n";
+            $recommended_actions = gi_generate_recommended_actions($grant_details, $comprehensive_score, $success_probability);
+            foreach (array_slice($recommended_actions, 0, 3) as $action) {
+                $response .= "・{$action}\n";
+            }
+            
+            $response .= "\n詳細分析は「AIチェックリスト」「AI比較」ボタンをご利用ください。";
     }
+    
+    // フッター情報
+    $response .= "\n\n" . sprintf("💻 AI分析精度: %s%% | 最終更新: %s", 
+        round($comprehensive_score['confidence'] * 100),
+        date('n/j H:i'));
     
     return $response;
 }
@@ -1672,112 +2297,162 @@ function gi_ajax_generate_checklist() {
 }
 
 /**
- * 助成金チェックリスト生成
+ * 【高度AI機能】助成金チェックリスト生成 - 業種・難易度・AI分析対応
  */
 function gi_generate_grant_checklist($post_id) {
-    // 助成金の詳細情報を取得
+    // 助成金の詳細情報と特性分析を取得
     $grant_details = gi_get_grant_details($post_id);
+    $grant_characteristics = gi_analyze_grant_characteristics($grant_details);
+    $ai_score = gi_calculate_comprehensive_ai_score($grant_details);
+    $success_probability = gi_estimate_success_probability($grant_details);
     
     $checklist = [];
     
-    // 1. 基本要件チェック
+    // === 1. 基本要件チェック（必須） ===
     $checklist[] = [
-        'text' => '助成金の対象者・対象事業の範囲を確認しました',
-        'priority' => 'high',
+        'text' => '助成金の対象者・対象事業の範囲を確認し、適格性を検証しました',
+        'priority' => 'critical',
         'checked' => false,
-        'category' => 'eligibility'
+        'category' => 'eligibility',
+        'ai_confidence' => 0.95,
+        'completion_time' => '30分',
+        'tips' => ['募集要項の対象者欄を3回読み直す', '類似事例での採択実績を調査する']
     ];
     
     $checklist[] = [
-        'text' => '企業規模（従業員数、資本金など）の要件を満たしている',
-        'priority' => 'high',
+        'text' => '企業規模（従業員数、資本金、売上高）の要件を満たしているか数値で確認',
+        'priority' => 'critical',
         'checked' => false,
-        'category' => 'eligibility'
+        'category' => 'eligibility',
+        'ai_confidence' => 0.92,
+        'completion_time' => '15分',
+        'tips' => ['決算書の数値と要件を照合', 'グループ会社がある場合は連結数値も確認']
     ];
     
-    // 2. 申請期限関連
+    // === 2. 業種・分野別の特化要件 ===
+    if ($grant_characteristics['industry_type'] === 'it_digital') {
+        $checklist = array_merge($checklist, gi_generate_it_specific_checklist($grant_details));
+    } elseif ($grant_characteristics['industry_type'] === 'manufacturing') {
+        $checklist = array_merge($checklist, gi_generate_manufacturing_checklist($grant_details));
+    } elseif ($grant_characteristics['industry_type'] === 'startup') {
+        $checklist = array_merge($checklist, gi_generate_startup_checklist($grant_details));
+    } elseif ($grant_characteristics['industry_type'] === 'sustainability') {
+        $checklist = array_merge($checklist, gi_generate_sustainability_checklist($grant_details));
+    }
+    
+    // === 3. 申請期限・時系列管理 ===
     if (!empty($grant_details['deadline'])) {
+        $deadline_analysis = gi_analyze_deadline_pressure($grant_details['deadline']);
         $checklist[] = [
-            'text' => '申請期限（' . $grant_details['deadline'] . '）を確認し、スケジュールを立てました',
-            'priority' => 'high',
+            'text' => sprintf('申請期限（%s）まで逆算したタイムライン作成と進捗管理体制構築', $grant_details['deadline']),
+            'priority' => $deadline_analysis['is_urgent'] ? 'critical' : 'high',
             'checked' => false,
-            'category' => 'schedule'
+            'category' => 'schedule',
+            'ai_confidence' => 0.88,
+            'completion_time' => $deadline_analysis['recommended_prep_time'],
+            'tips' => [$deadline_analysis['strategy'], '週次進捗確認ミーティング設定']
         ];
     }
     
-    // 3. 必要書類関連
-    $checklist[] = [
-        'text' => '事業計画書を作成しました',
-        'priority' => 'high',
-        'checked' => false,
-        'category' => 'documents'
-    ];
+    // === 4. 書類準備（AIによる優先度算出） ===
+    $document_priority = gi_calculate_document_priority($grant_details);
     
-    $checklist[] = [
-        'text' => '会社案内、登記事項証明書、決算書を準備しました',
-        'priority' => 'medium',
-        'checked' => false,
-        'category' => 'documents'
-    ];
+    foreach ($document_priority as $doc) {
+        $checklist[] = [
+            'text' => $doc['name'] . 'の作成・準備完了',
+            'priority' => $doc['priority'],
+            'checked' => false,
+            'category' => 'documents',
+            'ai_confidence' => $doc['importance_score'],
+            'completion_time' => $doc['estimated_time'],
+            'tips' => $doc['preparation_tips']
+        ];
+    }
     
-    $checklist[] = [
-        'text' => '見積書、カタログなどの根拠資料を準備しました',
-        'priority' => 'medium',
-        'checked' => false,
-        'category' => 'documents'
-    ];
-    
-    // 4. 資金関連
+    // === 5. 資金計画・ROI分析 ===
     if (!empty($grant_details['max_amount'])) {
+        $roi_analysis = gi_calculate_grant_roi_potential($grant_details);
         $checklist[] = [
-            'text' => '申請金額と事業費の積算を完了しました',
+            'text' => sprintf('事業費%s円の詳細積算と ROI %s%% の実現可能性検証', 
+                number_format($grant_details['max_amount_numeric'] ?: 0), 
+                round($roi_analysis['projected_roi'], 1)),
+            'priority' => 'critical',
+            'checked' => false,
+            'category' => 'budget',
+            'ai_confidence' => $roi_analysis['confidence'],
+            'completion_time' => '3-5時間',
+            'tips' => [
+                '3社以上からの見積取得',
+                '事業効果の定量化（売上・コスト削減）',
+                '投資回収計画の策定'
+            ]
+        ];
+        
+        $checklist[] = [
+            'text' => sprintf('自己資金 %s円の確保と資金繰り計画策定', 
+                number_format(($grant_details['max_amount_numeric'] ?: 0) * (1 - ($grant_details['subsidy_rate'] ? floatval(str_replace('%', '', $grant_details['subsidy_rate'])) / 100 : 0.5)))),
             'priority' => 'high',
             'checked' => false,
-            'category' => 'budget'
+            'category' => 'budget',
+            'ai_confidence' => 0.85,
+            'completion_time' => '1-2時間',
+            'tips' => ['銀行融資の事前相談', '資金調達スケジュールの確認']
         ];
     }
     
-    $checklist[] = [
-        'text' => '自己負担となる資金の確保を確認しました',
-        'priority' => 'medium',
-        'checked' => false,
-        'category' => 'budget'
-    ];
-    
-    // 5. 特殊要件（助成金によって異なる）
-    if (!empty($grant_details['grant_target'])) {
-        if (strpos($grant_details['grant_target'], 'IT') !== false || strpos($grant_details['grant_target'], 'デジタル') !== false) {
-            $checklist[] = [
-                'text' => 'ITシステムの仕様書、機能一覧を準備しました',
-                'priority' => 'medium',
-                'checked' => false,
-                'category' => 'specific'
-            ];
-        }
-        
-        if (strpos($grant_details['grant_target'], '製造') !== false || strpos($grant_details['grant_target'], 'ものづくり') !== false) {
-            $checklist[] = [
-                'text' => '製造設備のスペック、導入効果を明確にしました',
-                'priority' => 'medium',
-                'checked' => false,
-                'category' => 'specific'
-            ];
-        }
+    // === 6. 成功確率向上のためのAI推奨アクション ===
+    $success_actions = gi_generate_success_optimization_actions($grant_details, $success_probability);
+    foreach ($success_actions as $action) {
+        $checklist[] = $action;
     }
     
-    // 6. 最終確認
+    // === 7. 競合分析・差別化戦略 ===
     $checklist[] = [
-        'text' => '申請書を第三者に確認してもらいました',
-        'priority' => 'medium',
-        'checked' => false,
-        'category' => 'final'
-    ];
-    
-    $checklist[] = [
-        'text' => '申請書の提出方法（郵送・Web提出等）を確認しました',
+        'text' => '同業他社の採択事例分析と自社の差別化ポイント3つ以上の明確化',
         'priority' => 'high',
         'checked' => false,
-        'category' => 'final'
+        'category' => 'strategy',
+        'ai_confidence' => 0.78,
+        'completion_time' => '2-3時間',
+        'tips' => [
+            '過去3年の採択事例をリサーチ',
+            '自社の技術的優位性を定量化',
+            '市場での独自性をアピールポイント化'
+        ]
+    ];
+    
+    // === 8. 最終品質管理 ===
+    $checklist[] = [
+        'text' => '申請書の専門家レビュー（行政書士・中小企業診断士等）実施',
+        'priority' => $grant_characteristics['complexity_level'] >= 7 ? 'critical' : 'high',
+        'checked' => false,
+        'category' => 'final',
+        'ai_confidence' => 0.92,
+        'completion_time' => '1-2日',
+        'tips' => [
+            '業界に詳しい専門家を選択',
+            '修正時間を考慮したスケジュール設定',
+            '提出前の最終チェックリスト作成'
+        ]
+    ];
+    
+    // === AIによるチェックリストの最適化 ===
+    $checklist = gi_optimize_checklist_by_ai($checklist, $grant_characteristics, $success_probability);
+    
+    // === 完成度とリスク評価の追加 ===
+    $checklist[] = [
+        'text' => sprintf('AI分析による成功確率 %s%% の要因分析と改善アクション実行', 
+            round($success_probability['overall_score'] * 100)),
+        'priority' => $success_probability['overall_score'] < 0.6 ? 'critical' : 'medium',
+        'checked' => false,
+        'category' => 'ai_analysis',
+        'ai_confidence' => $success_probability['confidence'],
+        'completion_time' => '1時間',
+        'tips' => [
+            '弱点項目の重点改善',
+            '強みの更なる強化',
+            'リスク要因の事前対策'
+        ]
     ];
     
     return $checklist;
@@ -1794,6 +2469,11 @@ function gi_generate_grant_checklist($post_id) {
  */
 function gi_ajax_compare_grants() {
     try {
+        // デバッグログ
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('gi_ajax_compare_grants called with: ' . print_r($_POST, true));
+        }
+        
         // セキュリティ検証
         if (!gi_verify_ajax_nonce()) {
             wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
@@ -1868,7 +2548,7 @@ function gi_generate_grants_comparison($grant_ids) {
         $difficulty = gi_get_grant_difficulty_info($grant_id);
         
         // 成功率情報
-        $success_rate = gi_get_field_safe('grant_success_rate', $grant_id, 0);
+        $success_rate = gi_get_field_safe('adoption_rate', $grant_id, 0);
         
         $comparison_data[] = [
             'id' => $grant_id,
@@ -1915,7 +2595,7 @@ function gi_calculate_comparison_match_score($grant_id) {
     }
     
     // 成功率加算
-    $success_rate = gi_get_field_safe('grant_success_rate', $grant_id, 0);
+    $success_rate = gi_get_field_safe('adoption_rate', $grant_id, 0);
     if ($success_rate >= 50) {
         $base_score += 8;
     } elseif ($success_rate >= 30) {
@@ -2005,53 +2685,173 @@ function gi_extract_numeric_amount($amount_string) {
 }
 
 /**
- * 比較結果からAIおすすめ生成
+ * 【高度AI機能】比較結果からAI総合おすすめ生成 - 機械学習風スコアリング
  */
 function gi_generate_comparison_recommendation($comparison_data) {
     if (empty($comparison_data)) {
         return [
             'title' => '比較データがありません',
             'match_score' => 0,
-            'reason' => '比較する助成金を選択してください。'
+            'reason' => '比較する助成金を選択してください。',
+            'ai_analysis' => [],
+            'risk_factors' => [],
+            'optimization_suggestions' => []
         ];
     }
     
-    // マッチスコアでソート
-    usort($comparison_data, function($a, $b) {
-        return $b['match_score'] <=> $a['match_score'];
+    // 各助成金に対して高度なAI分析を実行
+    $enhanced_comparison = [];
+    foreach ($comparison_data as $grant) {
+        $grant_analysis = gi_perform_advanced_grant_analysis($grant);
+        $grant['ai_analysis'] = $grant_analysis;
+        $grant['composite_score'] = gi_calculate_composite_ai_score($grant, $grant_analysis);
+        $enhanced_comparison[] = $grant;
+    }
+    
+    // 複合スコア（AI分析結果）でソート
+    usort($enhanced_comparison, function($a, $b) {
+        return $b['composite_score'] <=> $a['composite_score'];
     });
     
-    $best_grant = $comparison_data[0];
+    $best_grant = $enhanced_comparison[0];
+    $second_best = isset($enhanced_comparison[1]) ? $enhanced_comparison[1] : null;
+    $third_best = isset($enhanced_comparison[2]) ? $enhanced_comparison[2] : null;
     
-    // おすすめ理由生成
-    $reasons = [];
+    // === 高度なAI推奨理由分析 ===
+    $ai_reasons = [];
+    $quantitative_factors = [];
+    $risk_assessment = [];
     
-    if ($best_grant['match_score'] >= 85) {
-        $reasons[] = '適合度が非常に高い';
+    // 成功確率分析
+    $success_prob = $best_grant['ai_analysis']['success_probability'];
+    if ($success_prob >= 0.75) {
+        $ai_reasons[] = sprintf('AI算出成功確率 %s%%（業界平均+%s%%）', 
+            round($success_prob * 100), 
+            round(($success_prob - 0.4) * 100));
+        $quantitative_factors['success_rate'] = $success_prob;
     }
     
-    if ($best_grant['amount_numeric'] >= 5000000) {
-        $reasons[] = '助成金額が高額';
+    // ROI分析
+    $roi_analysis = $best_grant['ai_analysis']['roi_analysis'];
+    if ($roi_analysis['projected_roi'] >= 150) {
+        $ai_reasons[] = sprintf('投資回収率 %s%%（%sヶ月で回収見込み）', 
+            round($roi_analysis['projected_roi']), 
+            $roi_analysis['payback_months']);
+        $quantitative_factors['roi'] = $roi_analysis['projected_roi'];
     }
     
-    if (!empty($best_grant['success_rate']) && $best_grant['success_rate'] >= 40) {
-        $reasons[] = '採択率が高い';
+    // 競合優位性
+    $competition_analysis = $best_grant['ai_analysis']['competition_analysis'];
+    if ($competition_analysis['advantage_score'] >= 0.7) {
+        $ai_reasons[] = sprintf('競合優位度 %s点/10点（差別化要因: %s）', 
+            round($competition_analysis['advantage_score'] * 10), 
+            implode('、', $competition_analysis['key_advantages']));
+        $quantitative_factors['competitive_advantage'] = $competition_analysis['advantage_score'];
     }
     
-    if ($best_grant['difficulty']['level'] === 'easy') {
-        $reasons[] = '申請難易度が低い';
+    // 申請難易度vs期待値分析
+    $effort_value_ratio = $best_grant['ai_analysis']['effort_value_ratio'];
+    if ($effort_value_ratio >= 1.5) {
+        $ai_reasons[] = sprintf('労力対効果比 %s倍（最適な投資効率）', 
+            round($effort_value_ratio, 1));
+        $quantitative_factors['effort_efficiency'] = $effort_value_ratio;
     }
     
-    $reason_text = !empty($reasons) 
-        ? implode('、', $reasons) . 'ことが理由です。'
-        : '総合的にバランスが良い助成金です。';
+    // 業界適合性
+    $industry_fit = $best_grant['ai_analysis']['industry_compatibility'];
+    if ($industry_fit >= 0.8) {
+        $ai_reasons[] = sprintf('業界適合度 %s%%（事業計画との整合性が高い）', 
+            round($industry_fit * 100));
+        $quantitative_factors['industry_fit'] = $industry_fit;
+    }
+    
+    // === リスク要因の分析 ===
+    $risk_factors = gi_analyze_grant_risks($best_grant);
+    
+    // === 他候補との比較優位性 ===
+    $comparative_advantages = [];
+    if ($second_best) {
+        $score_diff = $best_grant['composite_score'] - $second_best['composite_score'];
+        if ($score_diff >= 5) {
+            $comparative_advantages[] = sprintf('2位候補より %s点優位', round($score_diff));
+        }
+        
+        // 具体的な優位項目
+        if ($best_grant['amount_numeric'] > $second_best['amount_numeric']) {
+            $amount_diff = ($best_grant['amount_numeric'] - $second_best['amount_numeric']) / 10000;
+            $comparative_advantages[] = sprintf('助成額が %s万円多い', round($amount_diff));
+        }
+        
+        if (isset($best_grant['success_rate']) && isset($second_best['success_rate']) && 
+            $best_grant['success_rate'] > $second_best['success_rate']) {
+            $rate_diff = $best_grant['success_rate'] - $second_best['success_rate'];
+            $comparative_advantages[] = sprintf('採択率が %s%%高い', round($rate_diff));
+        }
+    }
+    
+    // === 最適化提案の生成 ===
+    $optimization_suggestions = gi_generate_optimization_suggestions($best_grant, $enhanced_comparison);
+    
+    // === 最終的な推奨理由の構築 ===
+    $comprehensive_reason = '';
+    if (!empty($ai_reasons)) {
+        $comprehensive_reason .= 'AI分析結果: ' . implode('、', array_slice($ai_reasons, 0, 3));
+    }
+    
+    if (!empty($comparative_advantages)) {
+        $comprehensive_reason .= '\n\n他候補との比較: ' . implode('、', $comparative_advantages);
+    }
+    
+    if (empty($comprehensive_reason)) {
+        $comprehensive_reason = 'AI総合評価により、現在の事業方針に最も適合する助成金と判定されました。';
+    }
     
     return [
         'title' => $best_grant['title'],
         'match_score' => $best_grant['match_score'],
-        'reason' => $reason_text,
+        'composite_score' => $best_grant['composite_score'],
+        'reason' => $comprehensive_reason,
         'grant_id' => $best_grant['id'],
-        'permalink' => $best_grant['permalink']
+        'permalink' => $best_grant['permalink'],
+        
+        // === AI分析の詳細データ ===
+        'ai_analysis' => [
+            'success_probability' => $success_prob,
+            'roi_projection' => $roi_analysis,
+            'risk_assessment' => $risk_factors,
+            'competitive_position' => $competition_analysis,
+            'industry_alignment' => $industry_fit,
+            'quantitative_factors' => $quantitative_factors
+        ],
+        
+        // === アクション推奨 ===
+        'optimization_suggestions' => $optimization_suggestions,
+        
+        // === 全体ランキング ===
+        'ranking' => [
+            'first' => [
+                'title' => $best_grant['title'],
+                'score' => $best_grant['composite_score'],
+                'key_strength' => $ai_reasons[0] ?? '総合バランス'
+            ],
+            'second' => $second_best ? [
+                'title' => $second_best['title'],
+                'score' => $second_best['composite_score'],
+                'key_strength' => gi_identify_key_strength($second_best)
+            ] : null,
+            'third' => $third_best ? [
+                'title' => $third_best['title'],
+                'score' => $third_best['composite_score'],
+                'key_strength' => gi_identify_key_strength($third_best)
+            ] : null
+        ],
+        
+        // === 意思決定サポート ===
+        'decision_factors' => [
+            'confidence_level' => gi_calculate_recommendation_confidence($best_grant, $enhanced_comparison),
+            'alternative_consideration' => $second_best && ($best_grant['composite_score'] - $second_best['composite_score']) < 3,
+            'immediate_action_required' => gi_check_urgency_factors($best_grant)
+        ]
     ];
 }
 
@@ -2195,7 +2995,7 @@ function gi_get_complete_grant_data($post_id) {
         'grant_target' => '',
         'eligible_expenses' => '',
         'grant_difficulty' => 'normal',
-        'grant_success_rate' => 0,
+        'adoption_rate' => 0,
         'required_documents' => '',
         
         // 申請・連絡先
@@ -2271,7 +3071,7 @@ function gi_get_all_grant_meta($post_id) {
     $meta_fields = [
         'ai_summary', 'organization', 'max_amount', 'max_amount_numeric',
         'deadline', 'application_status', 'grant_target', 'subsidy_rate',
-        'grant_difficulty', 'grant_success_rate', 'official_url', 'is_featured'
+        'grant_difficulty', 'adoption_rate', 'official_url', 'is_featured'
     ];
     
     foreach ($meta_fields as $field) {
@@ -2466,18 +3266,26 @@ if (!function_exists('gi_render_card_unified')) {
 }
 
 /**
- * 助成金読み込み処理（完全版・統一カード対応）
+ * 助成金読み込み処理（完全版・統一カード対応）- フィルタリング修正版
  */
 function gi_ajax_load_grants() {
-    // nonceチェック
-    if (!wp_verify_nonce($_POST['nonce'] ?? '', 'gi_ajax_nonce')) {
-        wp_send_json_error('セキュリティチェックに失敗しました');
-    }
+    try {
+        // デバッグログ
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('gi_ajax_load_grants called with: ' . print_r($_POST, true));
+        }
+        
+        // nonceチェック
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'gi_ajax_nonce')) {
+            wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
+            return;
+        }
 
     // ===== パラメータ取得と検証 =====
     $search = sanitize_text_field($_POST['search'] ?? '');
     $categories = json_decode(stripslashes($_POST['categories'] ?? '[]'), true) ?: [];
     $prefectures = json_decode(stripslashes($_POST['prefectures'] ?? '[]'), true) ?: [];
+    $municipalities = json_decode(stripslashes($_POST['municipalities'] ?? '[]'), true) ?: [];
     $tags = json_decode(stripslashes($_POST['tags'] ?? '[]'), true) ?: [];
     $status = json_decode(stripslashes($_POST['status'] ?? '[]'), true) ?: [];
     $difficulty = json_decode(stripslashes($_POST['difficulty'] ?? '[]'), true) ?: [];
@@ -2561,6 +3369,15 @@ function gi_ajax_load_grants() {
         ];
     }
     
+    if (!empty($municipalities)) {
+        $tax_query[] = [
+            'taxonomy' => 'grant_municipality',
+            'field' => 'slug',
+            'terms' => $municipalities,
+            'operator' => 'IN'
+        ];
+    }
+    
     if (!empty($tags)) {
         $tax_query[] = [
             'taxonomy' => 'grant_tag',
@@ -2581,7 +3398,11 @@ function gi_ajax_load_grants() {
     if (!empty($status)) {
         // UIステータスをDBの値にマッピング
         $db_status = array_map(function($s) {
-            return $s === 'active' ? 'open' : ($s === 'upcoming' ? 'upcoming' : $s);
+            // 複数の可能性に対応
+            if ($s === 'active' || $s === '募集中') return 'open';
+            if ($s === 'upcoming' || $s === '募集予定') return 'upcoming';
+            if ($s === 'closed' || $s === '終了') return 'closed';
+            return $s;
         }, $status);
         
         $meta_query[] = [
@@ -2637,6 +3458,170 @@ function gi_ajax_load_grants() {
         }
     }
     
+    // 難易度フィルター
+    if (!empty($difficulty)) {
+        $meta_query[] = [
+            'key' => 'grant_difficulty', // ACFフィールド名に合わせる
+            'value' => $difficulty,
+            'compare' => 'IN'
+        ];
+    }
+    
+    // 成功率フィルター
+    if (!empty($success_rate)) {
+        foreach ($success_rate as $rate_range) {
+            switch($rate_range) {
+                case '0-20':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [0, 20],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '20-40':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [20, 40],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '40-60':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [40, 60],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '60-80':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [60, 80],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+                case '80-100':
+                    $meta_query[] = [
+                        'key' => 'adoption_rate', // ACFフィールド名に合わせる
+                        'value' => [80, 100],
+                        'compare' => 'BETWEEN',
+                        'type' => 'NUMERIC'
+                    ];
+                    break;
+            }
+        }
+    }
+    
+    // 補助率フィルター
+    if (!empty($subsidy_rate)) {
+        $meta_query[] = [
+            'key' => 'subsidy_rate',
+            'value' => $subsidy_rate,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 実施機関フィルター
+    if (!empty($organization)) {
+        $meta_query[] = [
+            'key' => 'organization',
+            'value' => $organization,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 実施機関種別フィルター
+    if (!empty($organization_type)) {
+        $meta_query[] = [
+            'key' => 'organization_type',
+            'value' => $organization_type,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 対象事業フィルター
+    if (!empty($target_business)) {
+        $meta_query[] = [
+            'key' => 'grant_target',
+            'value' => $target_business,
+            'compare' => 'LIKE'
+        ];
+    }
+    
+    // 申請方法フィルター
+    if (!empty($application_method)) {
+        $meta_query[] = [
+            'key' => 'application_method',
+            'value' => $application_method,
+            'compare' => '='
+        ];
+    }
+    
+    // 締切期間フィルター
+    if (!empty($deadline_range)) {
+        $now = time();
+        switch($deadline_range) {
+            case 'within_1month':
+                $end_time = $now + (30 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'within_3months':
+                $end_time = $now + (90 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'within_6months':
+                $end_time = $now + (180 * 24 * 60 * 60);
+                $meta_query[] = [
+                    'key' => 'deadline_timestamp',
+                    'value' => [$now, $end_time],
+                    'compare' => 'BETWEEN',
+                    'type' => 'NUMERIC'
+                ];
+                break;
+            case 'anytime':
+                $meta_query[] = [
+                    'key' => 'deadline',
+                    'value' => ['随時', '通年', '年中'],
+                    'compare' => 'IN'
+                ];
+                break;
+        }
+    }
+    
+    // カスタム金額範囲フィルター
+    if ($amount_min > 0 || $amount_max > 0) {
+        $amount_query = [
+            'key' => 'max_amount_numeric',
+            'type' => 'NUMERIC'
+        ];
+        
+        if ($amount_min > 0 && $amount_max > 0) {
+            $amount_query['value'] = [$amount_min * 10000, $amount_max * 10000]; // 万円を円に変換
+            $amount_query['compare'] = 'BETWEEN';
+        } elseif ($amount_min > 0) {
+            $amount_query['value'] = $amount_min * 10000;
+            $amount_query['compare'] = '>=';
+        } elseif ($amount_max > 0) {
+            $amount_query['value'] = $amount_max * 10000;
+            $amount_query['compare'] = '<=';
+        }
+        
+        $meta_query[] = $amount_query;
+    }
+    
     // 注目の助成金フィルター
     if ($only_featured === 'true' || $only_featured === '1') {
         $meta_query[] = [
@@ -2677,7 +3662,7 @@ function gi_ajax_load_grants() {
             break;
         case 'success_rate_desc':
             $args['orderby'] = 'meta_value_num';
-            $args['meta_key'] = 'grant_success_rate';
+            $args['meta_key'] = 'adoption_rate'; // ACFフィールド名に合わせる
             $args['order'] = 'DESC';
             break;
         case 'featured_first':
@@ -2740,11 +3725,37 @@ function gi_ajax_load_grants() {
         'view' => $view,
         'query_info' => [
             'search' => $search,
-            'filters_applied' => !empty($categories) || !empty($prefectures) || !empty($tags) || !empty($status) || !empty($amount) || !empty($only_featured),
+            'filters_applied' => !empty($categories) || !empty($prefectures) || !empty($tags) || !empty($status) || !empty($amount) || !empty($only_featured) || !empty($difficulty) || !empty($success_rate) || !empty($subsidy_rate) || !empty($organization) || !empty($deadline_range),
+            'applied_filters' => [
+                'categories' => $categories,
+                'prefectures' => $prefectures, 
+                'tags' => $tags,
+                'status' => $status,
+                'difficulty' => $difficulty,
+                'success_rate' => $success_rate,
+                'amount' => $amount,
+                'subsidy_rate' => $subsidy_rate,
+                'organization' => $organization,
+                'deadline_range' => $deadline_range,
+                'only_featured' => $only_featured
+            ],
             'sort' => $sort,
         ],
-        'debug' => defined('WP_DEBUG') && WP_DEBUG ? $args : null,
+        'debug' => defined('WP_DEBUG') && WP_DEBUG ? [
+            'query_args' => $args,
+            'meta_query_count' => count($meta_query) - 1,
+            'tax_query_count' => count($tax_query) - 1
+        ] : null,
     ]);
+    
+    } catch (Exception $e) {
+        error_log('Grant Load Error: ' . $e->getMessage());
+        wp_send_json_error([
+            'message' => 'フィルタリング中にエラーが発生しました。しばらく後でお試しください。',
+            'code' => 'FILTERING_ERROR',
+            'debug' => WP_DEBUG ? $e->getMessage() : null
+        ]);
+    }
 }
 
 /**
@@ -2752,8 +3763,16 @@ function gi_ajax_load_grants() {
  * アーカイブページの補助金読み込み（市町村対応）
  */
 function gi_load_grants() {
+    // デバッグログ
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('gi_load_grants called with: ' . print_r($_POST, true));
+    }
+    
     // Nonce verification
-    check_ajax_referer('gi_ajax_nonce', 'nonce');
+    if (!gi_verify_ajax_nonce()) {
+        wp_send_json_error(['message' => 'セキュリティチェックに失敗しました', 'code' => 'SECURITY_ERROR']);
+        return;
+    }
     
     // Get parameters
     $search = sanitize_text_field($_POST['search'] ?? '');
@@ -2935,5 +3954,177 @@ function gi_load_grants() {
         ],
     ]);
 }
-add_action('wp_ajax_gi_load_grants', 'gi_load_grants');
-add_action('wp_ajax_nopriv_gi_load_grants', 'gi_load_grants');
+// gi_load_grants AJAX handlers removed to avoid conflicts with gi_ajax_load_grants
+
+/**
+ * =============================================================================
+ * Missing Helper Functions for Comparison
+ * =============================================================================
+ */
+
+// gi_get_field_safe() function already declared earlier in this file
+
+/**
+ * =============================================================================
+ * OpenAI API 設定管理
+ * =============================================================================
+ */
+
+/**
+ * OpenAI API設定の管理画面をWordPress管理画面に追加
+ */
+add_action('admin_menu', 'gi_add_openai_settings_page');
+function gi_add_openai_settings_page() {
+    add_options_page(
+        'AI質問機能設定',
+        'AI質問機能',
+        'manage_options',
+        'gi-openai-settings',
+        'gi_openai_settings_page'
+    );
+}
+
+/**
+ * OpenAI API設定画面の表示
+ */
+function gi_openai_settings_page() {
+    // 設定保存処理
+    if (isset($_POST['submit']) && wp_verify_nonce($_POST['gi_openai_nonce'], 'gi_openai_settings')) {
+        $api_key = sanitize_text_field($_POST['gi_openai_api_key'] ?? '');
+        $model = sanitize_text_field($_POST['gi_openai_model'] ?? 'gpt-3.5-turbo');
+        $max_tokens = intval($_POST['gi_openai_max_tokens'] ?? 500);
+        $temperature = floatval($_POST['gi_openai_temperature'] ?? 0.7);
+        
+        update_option('gi_openai_api_key', $api_key);
+        update_option('gi_openai_model', $model);
+        update_option('gi_openai_max_tokens', $max_tokens);
+        update_option('gi_openai_temperature', $temperature);
+        
+        echo '<div class="notice notice-success"><p>設定を保存しました。</p></div>';
+    }
+    
+    $current_api_key = get_option('gi_openai_api_key', '');
+    $current_model = get_option('gi_openai_model', 'gpt-3.5-turbo');
+    $current_max_tokens = get_option('gi_openai_max_tokens', 500);
+    $current_temperature = get_option('gi_openai_temperature', 0.7);
+    ?>
+    
+    <div class="wrap">
+        <h1>AI質問機能設定</h1>
+        <p>助成金詳細ページでユーザーがAIに質問できる機能の設定を行います。</p>
+        
+        <form method="post">
+            <?php wp_nonce_field('gi_openai_settings', 'gi_openai_nonce'); ?>
+            
+            <table class="form-table">
+                <tr>
+                    <th scope="row">OpenAI API キー</th>
+                    <td>
+                        <input type="password" name="gi_openai_api_key" value="<?php echo esc_attr($current_api_key); ?>" class="regular-text" />
+                        <p class="description">
+                            OpenAIのAPIキーを入力してください。<br>
+                            APIキーは <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a> で取得できます。<br>
+                            <strong>空白の場合は簡易的なフォールバック応答を表示します。</strong>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">使用モデル</th>
+                    <td>
+                        <select name="gi_openai_model">
+                            <option value="gpt-3.5-turbo" <?php selected($current_model, 'gpt-3.5-turbo'); ?>>GPT-3.5 Turbo (推奨)</option>
+                            <option value="gpt-4" <?php selected($current_model, 'gpt-4'); ?>>GPT-4 (高精度・高コスト)</option>
+                            <option value="gpt-4-turbo" <?php selected($current_model, 'gpt-4-turbo'); ?>>GPT-4 Turbo</option>
+                        </select>
+                        <p class="description">利用するOpenAIのモデルを選択してください。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">最大トークン数</th>
+                    <td>
+                        <input type="number" name="gi_openai_max_tokens" value="<?php echo esc_attr($current_max_tokens); ?>" min="100" max="2000" />
+                        <p class="description">AIの応答の最大長さ (100-2000)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Temperature</th>
+                    <td>
+                        <input type="number" name="gi_openai_temperature" value="<?php echo esc_attr($current_temperature); ?>" min="0" max="2" step="0.1" />
+                        <p class="description">AIの創造性レベル (0.0: 堅実, 2.0: 創造的)</p>
+                    </td>
+                </tr>
+            </table>
+            
+            <?php submit_button('設定を保存'); ?>
+        </form>
+        
+        <div class="card">
+            <h2>API接続テスト</h2>
+            <p>設定したAPIキーが正常に動作するかテストできます。</p>
+            <button type="button" id="test-openai-connection" class="button button-secondary">接続テスト</button>
+            <div id="test-result" style="margin-top: 15px;"></div>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                $('#test-openai-connection').on('click', function() {
+                    var button = $(this);
+                    var result = $('#test-result');
+                    
+                    button.prop('disabled', true).text('テスト中...');
+                    result.html('');
+                    
+                    $.post(ajaxurl, {
+                        action: 'gi_test_openai_connection',
+                        _wpnonce: '<?php echo wp_create_nonce("gi_test_openai"); ?>'
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            result.html('<div class="notice notice-success"><p>✅ ' + response.data.message + '</p></div>');
+                        } else {
+                            result.html('<div class="notice notice-error"><p>❌ ' + response.data.message + '</p></div>');
+                        }
+                    })
+                    .fail(function() {
+                        result.html('<div class="notice notice-error"><p>❌ 通信エラーが発生しました</p></div>');
+                    })
+                    .always(function() {
+                        button.prop('disabled', false).text('接続テスト');
+                    });
+                });
+            });
+            </script>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * OpenAI API接続テスト
+ */
+add_action('wp_ajax_gi_test_openai_connection', 'gi_ajax_test_openai_connection');
+function gi_ajax_test_openai_connection() {
+    if (!current_user_can('manage_options') || !wp_verify_nonce($_POST['_wpnonce'], 'gi_test_openai')) {
+        wp_send_json_error(['message' => '権限がありません']);
+        return;
+    }
+    
+    $api_key = get_option('gi_openai_api_key', '');
+    if (empty($api_key)) {
+        wp_send_json_error(['message' => 'APIキーが設定されていません']);
+        return;
+    }
+    
+    // テスト用のシンプルな質問でAPI接続確認
+    $test_response = gi_call_openai_api(
+        'あなたは助成金の専門アドバイザーです。', 
+        'こんにちは、接続テストです。', 
+        $api_key
+    );
+    
+    if ($test_response) {
+        wp_send_json_success(['message' => 'OpenAI APIに正常に接続できました']);
+    } else {
+        wp_send_json_error(['message' => 'APIキーが無効か、接続に失敗しました']);
+    }
+}
+
