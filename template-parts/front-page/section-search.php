@@ -703,7 +703,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border: 2px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: 1300px;
+    height: 780px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
 }
@@ -1079,7 +1079,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     border-radius: 20px;
     padding: 20px;
     border: 2px solid #e0e0e0;
-    height: 1300px;
+    height: 780px;
     overflow-y: auto;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }

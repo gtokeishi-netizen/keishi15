@@ -1887,33 +1887,41 @@ a.recent-grant-item:hover {
         padding: 8px;
         text-align: center;
         min-height: 120px;
+    }
+    
+    .category-card .card-inner {
+        height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
     }
     
-    .category-icon {
+    .category-card .card-icon {
         width: 32px;
         height: 32px;
         font-size: 14px;
         margin: 0 auto 4px;
     }
     
-    .category-title {
+    .category-card .card-icon i {
+        font-size: 14px;
+    }
+    
+    .category-card .card-title {
         font-size: 11px;
         margin: 4px 0 2px;
         line-height: 1.2;
         font-weight: 600;
     }
     
-    .category-description {
+    .category-card .card-description {
         font-size: 9px;
         line-height: 1.3;
         margin: 2px 0;
         opacity: 0.8;
     }
     
-    .category-stats {
+    .category-card .card-badge {
         font-size: 8px;
         margin-top: 4px;
         opacity: 0.7;
@@ -1936,6 +1944,7 @@ a.recent-grant-item:hover {
 /* Ultra Small Mobile - Further Compression (480px and below) */
 @media (max-width: 480px) {
     .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
         gap: 6px;
         margin-bottom: 15px;
     }
@@ -1945,23 +1954,26 @@ a.recent-grant-item:hover {
         min-height: 100px;
     }
     
-    .category-icon {
+    .category-card .card-icon {
         width: 28px;
         height: 28px;
+    }
+    
+    .category-card .card-icon i {
         font-size: 12px;
     }
     
-    .category-title {
+    .category-card .card-title {
         font-size: 10px;
         margin: 3px 0 1px;
     }
     
-    .category-description {
+    .category-card .card-description {
         font-size: 8px;
         line-height: 1.2;
     }
     
-    .category-stats {
+    .category-card .card-badge {
         font-size: 7px;
         margin-top: 3px;
     }
@@ -1983,6 +1995,7 @@ a.recent-grant-item:hover {
 /* Extra Small Mobile - Maximum Compression (375px and below) */
 @media (max-width: 375px) {
     .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
         gap: 4px;
         margin-bottom: 12px;
     }
@@ -1992,23 +2005,26 @@ a.recent-grant-item:hover {
         min-height: 90px;
     }
     
-    .category-icon {
+    .category-card .card-icon {
         width: 24px;
         height: 24px;
+    }
+    
+    .category-card .card-icon i {
         font-size: 10px;
     }
     
-    .category-title {
+    .category-card .card-title {
         font-size: 9px;
         margin: 2px 0 1px;
     }
     
-    .category-description {
+    .category-card .card-description {
         font-size: 7px;
         line-height: 1.1;
     }
     
-    .category-stats {
+    .category-card .card-badge {
         font-size: 6px;
         margin-top: 2px;
     }
@@ -2030,6 +2046,7 @@ a.recent-grant-item:hover {
 /* Smallest Mobile - Ultra Compression (360px and below) */
 @media (max-width: 360px) {
     .main-categories-grid {
+        grid-template-columns: 1fr 1fr;
         gap: 3px;
         margin-bottom: 10px;
     }
@@ -2039,23 +2056,26 @@ a.recent-grant-item:hover {
         min-height: 80px;
     }
     
-    .category-icon {
+    .category-card .card-icon {
         width: 20px;
         height: 20px;
+    }
+    
+    .category-card .card-icon i {
         font-size: 9px;
     }
     
-    .category-title {
+    .category-card .card-title {
         font-size: 8px;
         margin: 1px 0;
     }
     
-    .category-description {
+    .category-card .card-description {
         font-size: 6px;
         line-height: 1.0;
     }
     
-    .category-stats {
+    .category-card .card-badge {
         font-size: 5px;
         margin-top: 1px;
     }
