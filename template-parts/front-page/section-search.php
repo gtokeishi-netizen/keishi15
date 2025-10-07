@@ -96,22 +96,10 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                             <h3 class="assistant-name">補助金AIアシスタント</h3>
                             <span class="assistant-status">オンライン</span>
                         </div>
-                        <button class="ai-history-btn" onclick="toggleChatHistory()" title="会話履歴">
-                            履歴
-                            <span class="history-count">0</span>
-                        </button>
+
                     </div>
                     
-                    <!-- AI会話履歴パネル -->
-                    <div class="ai-history-panel" id="ai-history-panel" style="display:none;">
-                        <div class="ai-history-header">
-                            <h4>会話履歴</h4>
-                            <button onclick="clearChatHistory()" class="ai-history-clear">クリア</button>
-                        </div>
-                        <div class="ai-history-list" id="ai-history-list">
-                            <p class="ai-history-empty">履歴がありません</p>
-                        </div>
-                    </div>
+
                     
                     <div class="chat-messages" id="chat-messages">
                         <div class="message message-ai">
@@ -132,8 +120,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                             placeholder="質問を入力してください"
                             rows="1"></textarea>
                         <button id="chat-send" class="chat-send-btn">
-                            <span>送信</span>
-                            <span style="filter: grayscale(1) brightness(0); margin-left: 6px;">📤</span>
+                            送信
                         </button>
                     </div>
 
@@ -757,156 +744,9 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     color: #10b981;
 }
 
-/* AI History Button */
-.ai-history-btn {
-    margin-left: auto;
-    background: #fff;
-    border: 2px solid #000;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
 
-.ai-history-btn:hover {
-    background: #000;
-    color: #fff;
-}
 
-.history-count {
-    background: #000;
-    color: #fff;
-    padding: 0.125rem 0.5rem;
-    border-radius: 2px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
 
-.ai-history-btn:hover .history-count {
-    background: #fff;
-    color: #000;
-}
-
-/* AI History Panel */
-.ai-history-panel {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 100%;
-    max-height: 300px;
-    background: #fff;
-    border: 2px solid #000;
-    border-radius: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    overflow: hidden;
-    animation: slideDown 0.3s ease;
-    margin-top: 0.5rem;
-}
-
-@keyframes slideDown {
-    from { 
-        opacity: 0; 
-        transform: translateY(-10px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
-}
-
-.ai-history-header {
-    padding: 1rem;
-    border-bottom: 2px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fafafa;
-}
-
-.ai-history-header h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.ai-history-clear {
-    background: #fff;
-    border: 2px solid #000;
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-}
-
-.ai-history-clear:hover {
-    background: #000;
-    color: #fff;
-}
-
-.ai-history-list {
-    padding: 1rem;
-    max-height: 280px;
-    overflow-y: auto;
-}
-
-.ai-history-empty {
-    text-align: center;
-    color: #999;
-    font-size: 0.875rem;
-    padding: 2rem 1rem;
-    margin: 0;
-}
-
-.ai-history-item {
-    padding: 0.75rem;
-    border: 2px solid #e5e5e5;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.ai-history-item:hover {
-    border-color: #000;
-    background: #fafafa;
-    transform: translateX(4px);
-}
-
-.ai-history-item:last-child {
-    margin-bottom: 0;
-}
-
-.history-date {
-    font-size: 0.625rem;
-    color: #999;
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-}
-
-.history-question {
-    font-size: 0.8125rem;
-    color: #333;
-    font-weight: 500;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
 
 /* Chat Messages - Ultra Maximum Height for Better Conversation History */
 .chat-messages {
@@ -2056,48 +1896,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     display: none;
 }
 
-/* 履歴表示時のみモバイルナビを表示 */
-.history-showing .mobile-nav-tabs {
-    display: flex;
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10001;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e0e0e0;
-}
 
-.history-showing .nav-tab {
-    padding: 8px 16px;
-    border: none;
-    background: transparent;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 16px;
-    min-width: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.history-showing .nav-tab.active {
-    background: #000;
-    color: #fff;
-}
-
-.history-showing .nav-tab:hover {
-    background: #f0f0f0;
-}
-
-.history-showing .nav-tab.active:hover {
-    background: #000;
-}
 
 /* ============================================
    📱 スマホ完全対応 - AI検索セクション
@@ -2250,50 +2049,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         font-size: 10px;
     }
     
-    /* 🔧 履歴ボタン - 改行対応 */
-    .ai-history-btn {
-        width: 100%;
-        margin-left: 0;
-        margin-top: 12px;
-        justify-content: center;
-    }
-    
-    /* 🔧 履歴パネル - 全画面表示 */
-    .ai-history-panel {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        max-height: 100vh;
-        margin: 0;
-        border-radius: 0;
-        z-index: 10000;
-    }
-    
-    .ai-history-header {
-        padding: 16px 20px;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-    
-    .ai-history-list {
-        padding: 16px 20px;
-        max-height: calc(100vh - 60px);
-        overflow-y: auto;
-    }
-    
-    .ai-history-item {
-        padding: 16px;
-        margin-bottom: 12px;
-    }
-    
-    .history-question {
-        font-size: 14px;
-        -webkit-line-clamp: 3;
-    }
+
     
     /* 🔧 チャットメッセージ - 高さ調整 */
     .chat-messages {
@@ -2653,8 +2409,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
 @media (max-width: 768px) {
     .chat-messages,
     .assistant-chat,
-    .search-results-panel,
-    .ai-history-list {
+    .search-results-panel {
         -webkit-overflow-scrolling: touch;
         scroll-behavior: smooth;
     }
@@ -2837,27 +2592,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             // Voice input
             this.elements.voiceBtn?.addEventListener('click', this.startVoiceInput.bind(this));
 
-            // History controls
-            const historyBtn = document.querySelector('.ai-history-btn');
-            const historyPanel = document.querySelector('.ai-history-panel');
-            const historyCloseBtn = document.querySelector('.ai-history-close');
-            
-            if (historyBtn) {
-                historyBtn.addEventListener('click', this.showHistory.bind(this));
-            }
-            
-            if (historyCloseBtn) {
-                historyCloseBtn.addEventListener('click', this.hideHistory.bind(this));
-            }
-            
-            if (historyPanel) {
-                // Close on background click
-                historyPanel.addEventListener('click', (e) => {
-                    if (e.target === historyPanel) {
-                        this.hideHistory();
-                    }
-                });
-            }
+
 
             // Mobile navigation tabs
             const navTabs = document.querySelectorAll('.nav-tab');
@@ -3173,10 +2908,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                     // Type AI response
                     this.typeMessage(data.data.response);
                     
-                    // 💾 Save chat history (提案4)
-                    if (typeof window.saveChatHistory === 'function') {
-                        window.saveChatHistory(message, data.data.response);
-                    }
+
                     
                     // Update search results if needed
                     if (data.data.related_grants) {
@@ -3307,10 +3039,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                     this.hideNotification();
                     this.performSearch();
                     
-                    // Save voice input history
-                    if (transcript) {
-                        this.saveVoiceHistory(transcript, event.results[0][0].confidence);
-                    }
+
                 }
             };
 
@@ -3341,25 +3070,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
             recognition.start();
         }
 
-        // Save voice input history
-        async saveVoiceHistory(text, confidence) {
-            try {
-                const formData = new FormData();
-                formData.append('action', 'gi_voice_history');
-                formData.append('nonce', CONFIG.NONCE);
-                formData.append('session_id', CONFIG.SESSION_ID);
-                formData.append('text', text);
-                formData.append('confidence', confidence);
 
-                await fetch(CONFIG.API_URL, {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin'
-                });
-            } catch (error) {
-                console.error('Voice history save error:', error);
-            }
-        }
 
         // Notification system
         showNotification(message, type = 'info') {
@@ -4010,26 +3721,7 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
                 console.error('AI Controller not found');
             }
         };
-        // 🆕 履歴とナビゲーション制御メソッド
-        showHistory() {
-            const historyPanel = document.querySelector('.ai-history-panel');
-            if (historyPanel) {
-                historyPanel.classList.add('active');
-                // PC版でのみbodyに'history-showing'クラスを追加
-                if (window.innerWidth > 768) {
-                    document.body.classList.add('history-showing');
-                }
-            }
-        }
-        
-        hideHistory() {
-            const historyPanel = document.querySelector('.ai-history-panel');
-            if (historyPanel) {
-                historyPanel.classList.remove('active');
-                // PC版のみbodyから'history-showing'クラスを削除
-                document.body.classList.remove('history-showing');
-            }
-        }
+
         
         handleNavTabClick(e) {
             const tab = e.currentTarget;
@@ -4115,191 +3807,12 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         }, 500);
     });
 
-    // ============================================
-    // AI Chat History Management (提案4)
-    // ============================================
-    
-    /**
-     * チャット履歴をトグル表示
-     */
-    window.toggleChatHistory = function() {
-        const panel = document.getElementById('ai-history-panel');
-        if (!panel) return;
-        
-        if (panel.style.display === 'none' || !panel.style.display) {
-            loadChatHistory();
-            panel.style.display = 'block';
-        } else {
-            panel.style.display = 'none';
-        }
-    };
-    
-    /**
-     * チャット履歴を保存
-     */
-    window.saveChatHistory = function(question, answer) {
-        try {
-            let history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            
-            // 新しい会話を先頭に追加
-            history.unshift({
-                id: Date.now(),
-                question: question,
-                answer: answer,
-                timestamp: new Date().toISOString(),
-                date: new Date().toLocaleDateString('ja-JP', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-            });
-            
-            // 最新20件のみ保持
-            history = history.slice(0, 20);
-            localStorage.setItem('gi_chat_history', JSON.stringify(history));
-            
-            // バッジの数を更新
-            updateHistoryCount();
-            
-            console.log('Chat history saved:', history.length);
-        } catch (error) {
-            console.error('Error saving chat history:', error);
-        }
-    };
-    
-    /**
-     * チャット履歴を読み込んで表示
-     */
-    window.loadChatHistory = function() {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const listContainer = document.getElementById('ai-history-list');
-            
-            if (!listContainer) return;
-            
-            if (history.length === 0) {
-                listContainer.innerHTML = '<p class="ai-history-empty">履歴がありません</p>';
-                return;
-            }
-            
-            // 履歴アイテムを生成
-            listContainer.innerHTML = history.map((item, index) => `
-                <div class="ai-history-item" onclick="restoreConversation(${item.id})" data-index="${index}">
-                    <div class="history-date">${item.date}</div>
-                    <div class="history-question">${escapeHtml(item.question.substring(0, 80))}${item.question.length > 80 ? '...' : ''}</div>
-                </div>
-            `).join('');
-            
-            console.log('Chat history loaded:', history.length);
-        } catch (error) {
-            console.error('Error loading chat history:', error);
-        }
-    };
-    
-    /**
-     * チャット履歴をクリア
-     */
-    window.clearChatHistory = function() {
-        if (confirm('会話履歴を削除しますか？この操作は取り消せません。')) {
-            try {
-                localStorage.removeItem('gi_chat_history');
-                updateHistoryCount();
-                
-                const listContainer = document.getElementById('ai-history-list');
-                if (listContainer) {
-                    listContainer.innerHTML = '<p class="ai-history-empty">履歴がありません</p>';
-                }
-                
-                console.log('Chat history cleared');
-            } catch (error) {
-                console.error('Error clearing chat history:', error);
-            }
-        }
-    };
-    
-    /**
-     * 過去の会話を復元
-     */
-    window.restoreConversation = function(id) {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const conversation = history.find(item => item.id == id);
-            
-            if (!conversation) {
-                console.error('Conversation not found:', id);
-                return;
-            }
-            
-            const chatMessages = document.getElementById('chat-messages');
-            if (!chatMessages) return;
-            
-            // チャットメッセージをクリアして復元
-            chatMessages.innerHTML = `
-                <div class="message message-user" style="animation: messageIn 0.3s ease-out;">
-                    <div class="message-bubble">${escapeHtml(conversation.question)}</div>
-                </div>
-                <div class="message message-ai" style="animation: messageIn 0.3s ease-out;">
-                    <div class="message-bubble">${escapeHtml(conversation.answer)}</div>
-                </div>
-            `;
-            
-            // 最新のメッセージにスクロール
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // モーダルを開く（存在する場合）
-            const modal = document.getElementById('grant-assistant-modal');
-            if (modal) {
-                modal.classList.add('active');
-            }
-            
-            // 履歴パネルを閉じる
-            const panel = document.getElementById('ai-history-panel');
-            if (panel) {
-                panel.style.display = 'none';
-            }
-            
-            console.log('Conversation restored:', id);
-        } catch (error) {
-            console.error('Error restoring conversation:', error);
-        }
-    };
-    
-    /**
-     * 履歴カウントバッジを更新
-     */
-    function updateHistoryCount() {
-        try {
-            const history = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-            const countBadge = document.querySelector('.history-count');
-            
-            if (countBadge) {
-                countBadge.textContent = history.length;
-                countBadge.style.display = history.length > 0 ? 'flex' : 'none';
-            }
-        } catch (error) {
-            console.error('Error updating history count:', error);
-        }
-    }
-    
-    /**
-     * HTML特殊文字をエスケープ
-     */
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // ページ読み込み時に履歴カウントを初期化
-    document.addEventListener('DOMContentLoaded', function() {
-        updateHistoryCount();
-        console.log('Chat history initialized');
-    });
-    
-    // チャットメッセージ送信後に履歴を保存（既存のsendChatMessage関数と連携）
-    // Note: AISearchController.sendChatMessage内でsaveChatHistory()を呼び出す必要があります
+
+
+
+
+
+
 
     // ============================================
     // 提案8: AI質問サジェスト機能強化
@@ -4314,13 +3827,8 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
         
         if (!container) return;
         
-        // ユーザーの行動履歴を分析
-        const chatHistory = JSON.parse(localStorage.getItem('gi_chat_history') || '[]');
-        const viewHistory = JSON.parse(localStorage.getItem('gi_view_history') || '[]');
-        const searchHistory = JSON.parse(localStorage.getItem('gi_search_history') || '[]');
-        
-        // コンテキストに基づいて質問を生成
-        const questions = analyzeAndGenerateQuestions(chatHistory, viewHistory, searchHistory);
+        // デフォルトの基本質問を使用
+        const questions = getDefaultQuestions();
         
         if (questions.length > 0) {
             // AIが生成した質問で置き換え
@@ -4354,140 +3862,17 @@ $nonce = wp_create_nonce('gi_ai_search_nonce');
     }
     
     /**
-     * コンテキストに基づいて質問を分析・生成
+     * デフォルトの基本質問を取得
      */
-    function analyzeAndGenerateQuestions(chatHistory, viewHistory, searchHistory) {
-        const questions = [];
-        
-        // デフォルトの基本質問
-        const defaultQuestions = [
+    function getDefaultQuestions() {
+        return [
             { question: '申請の流れを教えて', label: '申請の流れ', icon: 'fa-route', reason: '基本的な申請プロセス' },
             { question: '必要書類は？', label: '必要書類', icon: 'fa-file-alt', reason: '必要な提出書類' },
             { question: '締切はいつ？', label: '締切確認', icon: 'fa-clock', reason: '申請期限の確認' },
             { question: '採択率は？', label: '採択率', icon: 'fa-chart-line', reason: '採択される確率' }
         ];
-        
-        // 履歴がある場合、コンテキストベースの質問を生成
-        if (chatHistory.length > 0 || viewHistory.length > 0 || searchHistory.length > 0) {
-            // 最近の会話から関連質問を生成
-            const recentChat = chatHistory.slice(0, 3);
-            
-            // パターン1: 特定カテゴリーに興味がある
-            const categories = extractCategories(viewHistory);
-            if (categories.length > 0) {
-                const topCategory = categories[0];
-                questions.push({
-                    question: `${topCategory}の補助金で人気なのは？`,
-                    label: `${topCategory}の人気`,
-                    icon: 'fa-fire',
-                    reason: `${topCategory}への関心が高い`
-                });
-            }
-            
-            // パターン2: 金額に関心がある
-            if (searchHistory.some(s => s.includes('金額') || s.includes('万円') || s.includes('億円'))) {
-                questions.push({
-                    question: '最大助成額が大きい補助金を教えて',
-                    label: '高額助成金',
-                    icon: 'fa-coins',
-                    reason: '高額助成金への関心'
-                });
-            }
-            
-            // パターン3: 締切を気にしている
-            if (recentChat.some(c => c.question.includes('締切') || c.question.includes('期限'))) {
-                questions.push({
-                    question: '今すぐ申請できる補助金は？',
-                    label: '今すぐ申請可能',
-                    icon: 'fa-bolt',
-                    reason: '緊急性が高い'
-                });
-            }
-            
-            // パターン4: 地域に興味がある
-            const prefectures = extractPrefectures(viewHistory);
-            if (prefectures.length > 0) {
-                const topPref = prefectures[0];
-                questions.push({
-                    question: `${topPref}の補助金で申請しやすいのは？`,
-                    label: `${topPref}で申請しやすい`,
-                    icon: 'fa-map-marker-alt',
-                    reason: `${topPref}への地域的関心`
-                });
-            }
-            
-            // パターン5: 難易度を気にしている
-            if (recentChat.some(c => c.question.includes('難易度') || c.question.includes('簡単'))) {
-                questions.push({
-                    question: '初心者でも申請しやすい補助金は？',
-                    label: '初心者向け',
-                    icon: 'fa-graduation-cap',
-                    reason: '申請難易度への関心'
-                });
-            }
-            
-            // パターン6: 成功率を気にしている
-            if (recentChat.some(c => c.question.includes('採択') || c.question.includes('成功'))) {
-                questions.push({
-                    question: '採択率が高い補助金を教えて',
-                    label: '高採択率',
-                    icon: 'fa-trophy',
-                    reason: '採択率への関心'
-                });
-            }
-            
-            // パターン7: 複数回質問している
-            if (chatHistory.length >= 5) {
-                questions.push({
-                    question: '私に最適な補助金をAIで提案して',
-                    label: 'AIで最適化',
-                    icon: 'fa-brain',
-                    reason: 'パーソナライズされた提案'
-                });
-            }
-        }
-        
-        // 質問が4件未満の場合、デフォルトで補完
-        while (questions.length < 4) {
-            const remaining = defaultQuestions.filter(dq => 
-                !questions.some(q => q.question === dq.question)
-            );
-            if (remaining.length > 0) {
-                questions.push(remaining[0]);
-            } else {
-                break;
-            }
-        }
-        
-        // 最大4件に制限
-        return questions.slice(0, 4);
     }
-    
-    /**
-     * 履歴からカテゴリーを抽出
-     */
-    function extractCategories(history) {
-        const freq = {};
-        history.forEach(item => {
-            if (item.category) {
-                freq[item.category] = (freq[item.category] || 0) + 1;
-            }
-        });
-        return Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
-    }
-    
-    /**
-     * 履歴から都道府県を抽出
-     */
-    function extractPrefectures(history) {
-        const freq = {};
-        history.forEach(item => {
-            if (item.prefecture) {
-                freq[item.prefecture] = (freq[item.prefecture] || 0) + 1;
-            }
-        });
-        return Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
-    }
+
     
     // ページ読み込み時とユーザー操作後に質問を更新
     let questionUpdateTimeout;
